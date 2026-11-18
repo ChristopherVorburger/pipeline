@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Projet
 
-Mini CRM de prospection mono-utilisateur. L'intention, les règles métier et les critères d'acceptation sont dans `INTENT.md` : c'est la référence, à relire avant tout travail (fonctionnalité, refacto, correction de bug).
+Mini CRM de prospection mono-utilisateur. L'intention, les règles métier et les critères d'acceptation sont dans `INTENT.md` : c'est la référence, à relire avant tout travail.
 
 ## Commandes
 
