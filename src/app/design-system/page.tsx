@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,10 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 export default function DesignSystemPage() {
+  if (process.env.NODE_ENV === "production") {
+    notFound();
+  }
+
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-10 p-4 pb-16">
       <header className="flex items-start justify-between gap-4">
