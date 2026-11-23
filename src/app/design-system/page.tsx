@@ -50,6 +50,8 @@ const stages = [
   { value: "commande", label: "Commande" },
 ];
 
+const currentStageIndex = stages.findIndex((stage) => stage.value === "degustation");
+
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-4 border-t pt-6">
@@ -187,9 +189,12 @@ export default function DesignSystemPage() {
           <CardContent className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <div className="flex gap-1">
-                <span className="h-1 flex-1 bg-primary" />
-                <span className="h-1 flex-1 bg-primary" />
-                <span className="h-1 flex-1 bg-muted" />
+                {stages.map((stage, index) => (
+                  <span
+                    key={stage.value}
+                    className={`h-1 flex-1 ${index <= currentStageIndex ? "bg-primary" : "bg-muted"}`}
+                  />
+                ))}
               </div>
               <div className="flex justify-between font-mono text-[0.65rem] text-muted-foreground">
                 {stages.map((stage) => (
