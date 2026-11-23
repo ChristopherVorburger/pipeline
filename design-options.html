@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Options de design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Instrument+Serif&family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --page-bg: oklch(0.97 0.004 90);
+    --page-fg: oklch(0.2 0.005 60);
+    --page-muted: oklch(0.5 0.01 70);
+    --page-border: oklch(0.2 0.005 60 / 12%);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --page-bg: oklch(0.15 0.004 60);
+      --page-fg: oklch(0.94 0.01 90);
+      --page-muted: oklch(0.7 0.01 80);
+      --page-border: oklch(0.94 0.01 90 / 12%);
+    }
+  }
+  :root[data-theme="dark"] {
+    --page-bg: oklch(0.15 0.004 60);
+    --page-fg: oklch(0.94 0.01 90);
+    --page-muted: oklch(0.7 0.01 80);
+    --page-border: oklch(0.94 0.01 90 / 12%);
+  }
+
+  .etiquette {
+    --background: oklch(0.965 0.014 90);
+    --foreground: oklch(0.19 0.005 60);
+    --card: oklch(0.985 0.008 90);
+    --primary: oklch(0.19 0.005 60);
+    --primary-foreground: oklch(0.965 0.014 90);
+    --secondary: oklch(0.92 0.02 85);
+    --secondary-foreground: oklch(0.19 0.005 60);
+    --muted: oklch(0.91 0.018 85);
+    --muted-foreground: oklch(0.48 0.015 70);
+    --accent: oklch(0.86 0.1 80);
+    --accent-foreground: oklch(0.3 0.06 60);
+    --warning: oklch(0.86 0.1 80);
+    --warning-foreground: oklch(0.3 0.06 60);
+    --destructive: oklch(0.5 0.19 28);
+    --border: oklch(0.19 0.005 60 / 18%);
+    --input: oklch(0.19 0.005 60 / 72%);
+    --radius: 0.125rem;
+    --font-heading: "Instrument Serif", serif;
+    --font-sans: "IBM Plex Sans", sans-serif;
+    --font-mono: "IBM Plex Mono", monospace;
+    --heading-weight: 400;
+    --label-transform: uppercase;
+  }
+  .cave {
+    --background: oklch(0.975 0.006 20);
+    --foreground: oklch(0.22 0.03 15);
+    --card: oklch(1 0 0);
+    --primary: oklch(0.38 0.13 15);
+    --primary-foreground: oklch(0.98 0.005 20);
+    --secondary: oklch(0.93 0.02 15);
+    --secondary-foreground: oklch(0.3 0.08 15);
+    --muted: oklch(0.94 0.012 20);
+    --muted-foreground: oklch(0.5 0.03 15);
+    --accent: oklch(0.88 0.06 140);
+    --accent-foreground: oklch(0.3 0.07 140);
+    --warning: oklch(0.88 0.09 70);
+    --warning-foreground: oklch(0.35 0.08 55);
+    --destructive: oklch(0.52 0.2 28);
+    --border: oklch(0.22 0.03 15 / 12%);
+    --input: oklch(0.22 0.03 15 / 30%);
+    --radius: 0.75rem;
+    --font-heading: "Fraunces", serif;
+    --font-sans: "Inter", sans-serif;
+    --font-mono: "Inter", sans-serif;
+    --heading-weight: 600;
+    --label-transform: none;
+  }
+  .terrain {
+    --background: oklch(0.985 0.002 250);
+    --foreground: oklch(0.2 0.02 255);
+    --card: oklch(1 0 0);
+    --primary: oklch(0.5 0.13 160);
+    --primary-foreground: oklch(0.99 0 0);
+    --secondary: oklch(0.95 0.008 250);
+    --secondary-foreground: oklch(0.25 0.02 255);
+    --muted: oklch(0.96 0.006 250);
+    --muted-foreground: oklch(0.5 0.02 255);
+    --accent: oklch(0.92 0.05 160);
+    --accent-foreground: oklch(0.32 0.08 160);
+    --warning: oklch(0.9 0.1 85);
+    --warning-foreground: oklch(0.38 0.08 65);
+    --destructive: oklch(0.55 0.21 27);
+    --border: oklch(0.2 0.02 255 / 10%);
+    --input: oklch(0.2 0.02 255 / 20%);
+    --radius: 0.375rem;
+    --font-heading: "Inter", sans-serif;
+    --font-sans: "Inter", sans-serif;
+    --font-mono: "JetBrains Mono", monospace;
+    --heading-weight: 600;
+    --label-transform: uppercase;
+  }
+
+  .dark-tokens.etiquette {
+    --background: oklch(0.17 0.005 60);
+    --foreground: oklch(0.94 0.014 90);
+    --card: oklch(0.21 0.006 60);
+    --primary: oklch(0.94 0.014 90);
+    --primary-foreground: oklch(0.17 0.005 60);
+    --secondary: oklch(0.27 0.008 60);
+    --secondary-foreground: oklch(0.94 0.014 90);
+    --muted: oklch(0.27 0.008 60);
+    --muted-foreground: oklch(0.7 0.015 80);
+    --accent: oklch(0.72 0.12 75);
+    --accent-foreground: oklch(0.17 0.005 60);
+    --warning: oklch(0.72 0.12 75);
+    --warning-foreground: oklch(0.17 0.005 60);
+    --destructive: oklch(0.68 0.18 25);
+    --border: oklch(0.94 0.014 90 / 14%);
+    --input: oklch(0.94 0.014 90 / 24%);
+  }
+  .dark-tokens.cave {
+    --background: oklch(0.17 0.02 15);
+    --foreground: oklch(0.95 0.008 20);
+    --card: oklch(0.22 0.025 15);
+    --primary: oklch(0.7 0.13 15);
+    --primary-foreground: oklch(0.15 0.02 15);
+    --secondary: oklch(0.28 0.03 15);
+    --secondary-foreground: oklch(0.92 0.02 15);
+    --muted: oklch(0.26 0.02 15);
+    --muted-foreground: oklch(0.72 0.02 15);
+    --accent: oklch(0.42 0.07 140);
+    --accent-foreground: oklch(0.93 0.04 140);
+    --warning: oklch(0.75 0.11 70);
+    --warning-foreground: oklch(0.18 0.03 55);
+    --destructive: oklch(0.68 0.18 25);
+    --border: oklch(0.95 0.008 20 / 12%);
+    --input: oklch(0.95 0.008 20 / 22%);
+  }
+  .dark-tokens.terrain {
+    --background: oklch(0.16 0.012 255);
+    --foreground: oklch(0.95 0.005 250);
+    --card: oklch(0.2 0.015 255);
+    --primary: oklch(0.72 0.14 160);
+    --primary-foreground: oklch(0.16 0.02 160);
+    --secondary: oklch(0.26 0.015 255);
+    --secondary-foreground: oklch(0.93 0.005 250);
+    --muted: oklch(0.24 0.012 255);
+    --muted-foreground: oklch(0.7 0.015 255);
+    --accent: oklch(0.36 0.07 160);
+    --accent-foreground: oklch(0.92 0.05 160);
+    --warning: oklch(0.78 0.12 85);
+    --warning-foreground: oklch(0.2 0.03 65);
+    --destructive: oklch(0.68 0.18 25);
+    --border: oklch(0.95 0.005 250 / 10%);
+    --input: oklch(0.95 0.005 250 / 20%);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page-bg);
+    color: var(--page-fg);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+  }
+  header.page {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 32px 16px 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: end;
+    justify-content: space-between;
+  }
+  header.page h1 { margin: 0; font-size: 1.5rem; font-weight: 600; }
+  header.page p { margin: 4px 0 0; color: var(--page-muted); font-size: 0.9rem; }
+  .toggle {
+    display: inline-flex;
+    border: 1px solid var(--page-border);
+    border-radius: 999px;
+    padding: 3px;
+  }
+  .toggle button {
+    border: 0;
+    background: transparent;
+    color: var(--page-muted);
+    font: inherit;
+    font-size: 0.8rem;
+    padding: 6px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .toggle button[aria-pressed="true"] { background: var(--page-fg); color: var(--page-bg); }
+
+  .grid {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 16px 48px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+  }
+  @media (max-width: 400px) { .grid { grid-template-columns: 1fr; } }
+
+  .variant {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) * 2);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    min-width: 0;
+  }
+  .variant .tag {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: var(--label-transform);
+    color: var(--muted-foreground);
+  }
+  .variant h2 {
+    font-family: var(--font-heading);
+    font-weight: var(--heading-weight);
+    font-size: 2.25rem;
+    line-height: 1.05;
+    margin: 4px 0 6px;
+  }
+  .variant .pitch { margin: 0; color: var(--muted-foreground); font-size: 0.9rem; line-height: 1.5; }
+  .current {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    background: var(--accent);
+    color: var(--accent-foreground);
+    border-radius: var(--radius);
+    font-size: 0.65rem;
+    vertical-align: middle;
+  }
+
+  .label {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: var(--label-transform);
+    color: var(--muted-foreground);
+    margin: 0 0 8px;
+  }
+  .swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .swatches span {
+    aspect-ratio: 1;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+
+  .type-sample { font-family: var(--font-heading); font-weight: var(--heading-weight); font-size: 1.6rem; margin: 0; }
+  .type-body { margin: 4px 0 0; font-size: 0.9rem; line-height: 1.5; }
+
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .btn {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: var(--radius);
+    border: 1px solid transparent;
+    cursor: pointer;
+  }
+  .btn-primary { background: var(--primary); color: var(--primary-foreground); }
+  .btn-outline { background: transparent; color: var(--foreground); border-color: var(--input); }
+  .btn-ghost { background: transparent; color: var(--foreground); }
+
+  .badge {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    border-radius: var(--radius);
+    border: 1px solid transparent;
+  }
+  .b-outline { border-color: var(--border); }
+  .b-secondary { background: var(--secondary); color: var(--secondary-foreground); }
+  .b-primary { background: var(--primary); color: var(--primary-foreground); }
+  .b-accent { background: var(--accent); color: var(--accent-foreground); }
+  .b-warning { background: var(--warning); color: var(--warning-foreground); }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field input {
+    font: inherit;
+    font-size: 0.9rem;
+    padding: 8px 10px;
+    background: var(--card);
+    color: var(--foreground);
+    border: 1px solid var(--input);
+    border-radius: var(--radius);
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) * 1.4);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .card-head { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
+  .card h3 { font-family: var(--font-heading); font-weight: var(--heading-weight); font-size: 1.6rem; margin: 0; }
+  .card .sub { margin: 2px 0 0; font-size: 0.85rem; color: var(--muted-foreground); }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .steps span { height: 4px; background: var(--muted); border-radius: var(--radius); }
+  .steps span.on { background: var(--primary); }
+  .steps-legend {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    color: var(--muted-foreground);
+    margin-top: 4px;
+  }
+  .card dl { margin: 0; display: grid; gap: 8px; }
+  .card dt {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    text-transform: var(--label-transform);
+    color: var(--muted-foreground);
+  }
+  .card dd { margin: 2px 0 0; font-size: 0.88rem; }
+</style>
+</head>
+<body>
+<header class="page">
+  <div>
+    <h1>Pipeline : trois options de design system</h1>
+    <p>Mêmes composants, trois jeux de tokens. Étiquette est le thème appliqué dans l'app.</p>
+  </div>
+  <div class="toggle" role="group" aria-label="Thème">
+    <button type="button" data-mode="system" aria-pressed="true">Système</button>
+    <button type="button" data-mode="light" aria-pressed="false">Clair</button>
+    <button type="button" data-mode="dark" aria-pressed="false">Sombre</button>
+  </div>
+</header>
+
+<main class="grid" id="grid"></main>
+
+<template id="variant-template">
+  <section class="variant">
+    <div>
+      <div class="tag" data-slot="tag"></div>
+      <h2 data-slot="name"></h2>
+      <p class="pitch" data-slot="pitch"></p>
+    </div>
+
+    <div>
+      <p class="label">Couleurs</p>
+      <div class="swatches">
+        <span style="background: var(--background)" title="background"></span>
+        <span style="background: var(--foreground)" title="foreground"></span>
+        <span style="background: var(--primary)" title="primary"></span>
+        <span style="background: var(--secondary)" title="secondary"></span>
+        <span style="background: var(--accent)" title="accent"></span>
+        <span style="background: var(--destructive)" title="destructive"></span>
+      </div>
+    </div>
+
+    <div>
+      <p class="label">Typographie</p>
+      <p class="type-sample">À relancer aujourd'hui</p>
+      <p class="type-body">Passé à la cave mardi, très intéressé par le blanc sec. Rappeler avant vendredi.</p>
+    </div>
+
+    <div>
+      <p class="label">Boutons</p>
+      <div class="row">
+        <button class="btn btn-primary" type="button">Étape suivante</button>
+        <button class="btn btn-outline" type="button">Noter une visite</button>
+        <button class="btn btn-ghost" type="button">Annuler</button>
+      </div>
+    </div>
+
+    <div>
+      <p class="label">Badges</p>
+      <div class="row">
+        <span class="badge b-outline">Premier contact</span>
+        <span class="badge b-secondary">Dégustation</span>
+        <span class="badge b-primary">Commande</span>
+        <span class="badge b-accent">Client</span>
+        <span class="badge b-warning">À relancer</span>
+      </div>
+    </div>
+
+    <label class="field">
+      <span class="label" style="margin: 0">Nom du contact</span>
+      <input type="text" value="Camille Roux">
+    </label>
+
+    <div>
+      <p class="label">Carte de contact</p>
+      <article class="card">
+        <div class="card-head">
+          <div>
+            <h3>Camille Roux</h3>
+            <p class="sub">Sommelière · Le Comptoir</p>
+          </div>
+          <span class="badge b-warning">À relancer</span>
+        </div>
+        <div>
+          <div class="steps"><span class="on"></span><span class="on"></span><span></span></div>
+          <div class="steps-legend"><span>Premier contact</span><span>Dégustation</span><span>Commande</span></div>
+        </div>
+        <dl>
+          <div><dt>Vin dégusté</dt><dd>Chablis 1er cru 2022</dd></div>
+          <div><dt>Dernière visite</dt><dd>Il y a 9 jours</dd></div>
+        </dl>
+      </article>
+    </div>
+  </section>
+</template>
+
+<script>
+  const variants = [
+    { cls: "etiquette", tag: "Option A · actuel", name: "Étiquette", pitch: "Papier, encre et ocre. Serif éditorial, libellés en mono, angles presque droits.", current: true },
+    { cls: "cave", tag: "Option B", name: "Cave", pitch: "Bordeaux et vert sauge. Serif généreux, coins arrondis, ton plus chaleureux.", current: false },
+    { cls: "terrain", tag: "Option C", name: "Terrain", pitch: "Neutre et vert menthe. Tout en sans-serif, dense, orienté outil de travail.", current: false }
+  ];
+
+  const grid = document.getElementById("grid");
+  const tpl = document.getElementById("variant-template");
+  for (const v of variants) {
+    const node = tpl.content.firstElementChild.cloneNode(true);
+    node.classList.add(v.cls);
+    node.querySelector('[data-slot="tag"]').textContent = v.tag;
+    const name = node.querySelector('[data-slot="name"]');
+    name.textContent = v.name;
+    if (v.current) {
+      const badge = document.createElement("span");
+      badge.className = "current tag";
+      badge.textContent = "appliqué";
+      name.appendChild(badge);
+    }
+    node.querySelector('[data-slot="pitch"]').textContent = v.pitch;
+    grid.appendChild(node);
+  }
+
+  const media = window.matchMedia("(prefers-color-scheme: dark)");
+  let mode = "system";
+  try { mode = localStorage.getItem("design-options-mode") || "system"; } catch (e) {}
+
+  function apply() {
+    const dark = mode === "dark" || (mode === "system" && media.matches);
+    if (mode === "system") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", mode);
+    document.querySelectorAll(".variant").forEach(el => el.classList.toggle("dark-tokens", dark));
+    document.querySelectorAll(".toggle button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
+  }
+
+  document.querySelectorAll(".toggle button").forEach(b => b.addEventListener("click", () => {
+    mode = b.dataset.mode;
+    try { localStorage.setItem("design-options-mode", mode); } catch (e) {}
+    apply();
+  }));
+  media.addEventListener("change", apply);
+  apply();
+</script>
+</body>
+</html>
