@@ -1,6 +1,8 @@
 ---
 name: lot
 description: Traiter un lot de lots.md selon le process du projet : plan validé, TDD, preuves, puis proposition de PR. Utiliser quand l'utilisateur tape « /lot N » ou demande de traiter un lot.
+argument-hint: [numéro du lot]
+disable-model-invocation: true
 ---
 
 # lot · notre façon de développer un lot
@@ -9,6 +11,7 @@ Ce skill définit le process du projet. Il s'applique à chaque lot, sans le red
 Argument : le numéro du lot ($ARGUMENTS).
 
 ## 1. Préparer
+- Vérifie qu'aucune PR de dev vers main n'est ouverte : `gh pr list --base main --head dev --state open`. S'il y en a une, STOP : donne-moi son lien et n'écris rien.
 - Travaille sur la branche dev, à jour avec main : `git checkout dev && git pull origin main`.
 - Lis le lot $ARGUMENTS dans lots.md, puis INTENT.md et les règles de .claude/rules/.
 
@@ -29,10 +32,11 @@ Argument : le numéro du lot ($ARGUMENTS).
 - Chaque critère a son test.
 - La sortie rouge a été vue avant le code.
 - Les règles de .claude/rules/ sont respectées.
+- Donne-moi le test manuel à faire dans l'app, tiré des critères du lot. STOP : attends que je confirme qu'il passe avant d'ouvrir la PR.
 
 ## 5. Ouvrir la PR
-- Une fois tous les tests verts, ouvre la PR de dev vers main (`gh pr create`) et donne-moi le lien.
-- Dans le corps : les critères cochés, le test de chaque critère, la sortie rouge puis la sortie verte de `pnpm test`.
+- Une fois tous les tests verts et le test manuel confirmé, ouvre la PR de dev vers main (`gh pr create`) et donne-moi le lien.
+- Dans le corps : les critères cochés, le test de chaque critère, la sortie rouge puis la sortie verte de `pnpm test`, et le test manuel fait.
 
 ## Nomenclature des commits
 - `feat(lot-N): <titre du lot>` : un lot.
