@@ -12,14 +12,14 @@ describe("ContactForm", () => {
     render(<ContactForm action={action} />)
 
     fireEvent.change(screen.getByLabelText("Nom"), { target: { value: "Durand" } })
-    fireEvent.change(screen.getByLabelText("Prénom"), { target: { value: "Paul" } })
+    fireEvent.change(screen.getByLabelText("Prénom"), { target: { value: "Pierre" } })
     fireEvent.change(screen.getByLabelText("Restaurant"), { target: { value: "Le Comptoir" } })
     fireEvent.click(screen.getByRole("button", { name: "Ajouter" }))
 
     await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
     const formData = action.mock.calls[0][1]
     expect(formData.get("lastName")).toBe("Durand")
-    expect(formData.get("firstName")).toBe("Paul")
+    expect(formData.get("firstName")).toBe("Pierre")
     expect(formData.get("restaurant")).toBe("Le Comptoir")
   })
 
