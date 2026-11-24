@@ -34,10 +34,14 @@ export function ContactList({ contacts, emptyMessage = "Aucun contact." }: Conta
                 <CardDescription>{contact.restaurant}</CardDescription>
                 <StageBadge stage={contact.stage} isClient={contact.isClient} />
               </CardHeader>
-              {(contact.lastVisitDate || contact.wineTasted) && (
+              {(contact.lastVisitDate || contact.winesTasted.length > 0) && (
                 <CardContent className="flex flex-wrap gap-x-6 gap-y-1 font-mono text-xs tracking-wider uppercase text-muted-foreground">
                   {contact.lastVisitDate && <span>Dernière visite · {formatDate(contact.lastVisitDate)}</span>}
-                  {contact.wineTasted && <span>Vin · {contact.wineTasted}</span>}
+                  {contact.winesTasted.map((wine) => (
+                    <span key={wine.id}>
+                      Vin · {wine.name} · {wine.domainName}
+                    </span>
+                  ))}
                 </CardContent>
               )}
             </Card>

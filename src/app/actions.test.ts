@@ -2,10 +2,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { revalidatePath } from "next/cache"
 import { notFound, redirect } from "next/navigation"
-import { advanceContact, createContact, updateContact } from "@/app/actions"
+import { advanceContact, createContact, revertContact, updateContact } from "@/app/actions"
 import {
   addContact,
   advanceContactStage,
+  revertContactStage,
   updateContactDetails,
   type Contact,
 } from "@/services/contact-service"
@@ -15,6 +16,7 @@ vi.mock("next/navigation", () => ({ notFound: vi.fn(), redirect: vi.fn() }))
 vi.mock("@/services/contact-service", () => ({
   addContact: vi.fn(),
   advanceContactStage: vi.fn(),
+  revertContactStage: vi.fn(),
   updateContactDetails: vi.fn(),
 }))
 
@@ -26,7 +28,7 @@ const contact: Contact = {
   lastName: "Durand",
   firstName: null,
   restaurant: "Le Comptoir",
-  wineTasted: null,
+  winesTasted: [],
   comment: null,
   lastVisitDate: null,
   stage: "premier_contact",
@@ -34,6 +36,7 @@ const contact: Contact = {
   channel: null,
   isClient: false,
   nextStage: "degustation",
+  previousStage: null,
   createdAt: "2026-11-23T10:00:00.000Z",
 }
 
@@ -91,7 +94,6 @@ describe("updateContact", () => {
       ID,
       {},
       form({
-        wineTasted: "Chablis",
         comment: "Bien",
         lastVisitDate: "2026-11-12",
         interlocutor: "sommelier",
@@ -102,7 +104,7 @@ describe("updateContact", () => {
     expect(updateContactDetails).toHaveBeenCalledWith(
       ID,
       {
-        wineTasted: "Chablis",
+        wineIds: [],
         comment: "Bien",
         lastVisitDate: "2026-11-12",
         interlocutor: "sommelier",
@@ -126,7 +128,7 @@ describe("updateContact", () => {
 
     expect(state).toEqual({
       errors: { lastVisitDate: "La date de visite ne peut pas être dans le futur." },
-      values: { wineTasted: "", comment: "", lastVisitDate: "2027-01-01", interlocutor: "", channel: "" },
+      values: { wineIds: [], comment: "", lastVisitDate: "2027-01-01", interlocutor: "", channel: "" },
     })
     expect(redirect).not.toHaveBeenCalled()
   })
@@ -134,9 +136,34 @@ describe("updateContact", () => {
   it("affiche la page introuvable quand le service ne trouve pas le contact", async () => {
     vi.mocked(updateContactDetails).mockResolvedValue({ ok: false, reason: "notFound" })
 
-    await updateContact("abc", {}, form({ wineTasted: "Chablis" }))
+    await updateContact("abc", {}, form({ comment: "Bien" }))
 
     expect(notFound).toHaveBeenCalled()
+  })
+
+  it("transmet au service tous les vins cochés", async () => {
+    vi.mocked(updateContactDetails).mockResolvedValue({ ok: true, contact })
+    const formData = form({ comment: "" })
+    formData.append("wineIds", "w1")
+    formData.append("wineIds", "w2")
+
+    await updateContact(ID, {}, formData)
+
+    expect(updateContactDetails).toHaveBeenCalledWith(
+      ID,
+      expect.objectContaining({ wineIds: ["w1", "w2"] }),
+      expect.any(Date),
+    )
+  })
+
+  it("refuse un fichier à la place d'un vin coché sans appeler le service", async () => {
+    const formData = form({ comment: "" })
+    formData.append("wineIds", new File(["x"], "vin.txt"))
+
+    const state = await updateContact(ID, {}, formData)
+
+    expect(state).toEqual({ formError: FORM_ERROR })
+    expect(updateContactDetails).not.toHaveBeenCalled()
   })
 
   it("refuse un fichier à la place d'un texte sans appeler le service", async () => {
@@ -173,6 +200,36 @@ describe("advanceContact", () => {
     vi.mocked(advanceContactStage).mockResolvedValue({ ok: false, reason: "notFound" })
 
     await advanceContact("abc")
+
+    expect(notFound).toHaveBeenCalled()
+  })
+})
+
+describe("revertContact", () => {
+  it("ramène le contact à l'étape précédente puis rafraîchit la liste et la fiche", async () => {
+    vi.mocked(revertContactStage).mockResolvedValue({ ok: true, contact })
+
+    await revertContact(ID)
+
+    expect(revertContactStage).toHaveBeenCalledWith(ID)
+    expect(revalidatePath).toHaveBeenCalledWith("/")
+    expect(revalidatePath).toHaveBeenCalledWith("/a-relancer")
+    expect(revalidatePath).toHaveBeenCalledWith(`/contacts/${ID}`)
+  })
+
+  it("rafraîchit la fiche sans erreur quand le contact a déjà reculé", async () => {
+    vi.mocked(revertContactStage).mockResolvedValue({ ok: false, reason: "conflict" })
+
+    await revertContact(ID)
+
+    expect(notFound).not.toHaveBeenCalled()
+    expect(revalidatePath).toHaveBeenCalledWith(`/contacts/${ID}`)
+  })
+
+  it("affiche la page introuvable quand le service ne trouve pas le contact", async () => {
+    vi.mocked(revertContactStage).mockResolvedValue({ ok: false, reason: "notFound" })
+
+    await revertContact("abc")
 
     expect(notFound).toHaveBeenCalled()
   })

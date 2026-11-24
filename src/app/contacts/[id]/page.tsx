@@ -1,16 +1,17 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { advanceContact, updateContact } from "@/app/actions";
+import { advanceContact, revertContact, updateContact } from "@/app/actions";
 import { ContactDetailsForm } from "@/components/contact-details-form";
 import { ContactStage } from "@/components/contact-stage";
 import { ModeToggle } from "@/components/mode-toggle";
 import { buttonVariants } from "@/components/ui/button";
+import { listCatalog } from "@/services/catalog-service";
 import { getContact } from "@/services/contact-service";
 
 async function ContactSheet({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const result = await getContact(id);
+  const [result, catalog] = await Promise.all([getContact(id), listCatalog()]);
   if (!result.ok) notFound();
   const { contact } = result;
 
@@ -26,9 +27,11 @@ async function ContactSheet({ params }: { params: Promise<{ id: string }> }) {
         stage={contact.stage}
         isClient={contact.isClient}
         nextStage={contact.nextStage}
+        previousStage={contact.previousStage}
         action={advanceContact.bind(null, contact.id)}
+        revertAction={revertContact.bind(null, contact.id)}
       />
-      <ContactDetailsForm contact={contact} action={updateContact.bind(null, contact.id)} />
+      <ContactDetailsForm contact={contact} catalog={catalog} action={updateContact.bind(null, contact.id)} />
     </section>
   );
 }

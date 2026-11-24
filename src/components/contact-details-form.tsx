@@ -1,11 +1,14 @@
 "use client"
 
 import { useActionState } from "react"
-import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import type { CatalogDomain } from "@/services/catalog-service"
 import type { Contact, ContactDetailsErrors, ContactDetailsInput } from "@/services/contact-service"
 
 export type ContactDetailsFormState = {
@@ -16,17 +19,22 @@ export type ContactDetailsFormState = {
 
 type ContactDetailsFormProps = {
   contact: Contact
+  catalog: CatalogDomain[]
   action: (state: ContactDetailsFormState, formData: FormData) => Promise<ContactDetailsFormState>
 }
 
-type Choice = { value: string; label: string }
+type Choice = { value: string | null; label: string }
+
+const NOT_SET: Choice = { value: null, label: "Non renseigné" }
 
 const INTERLOCUTORS: Choice[] = [
+  NOT_SET,
   { value: "patron", label: "Patron" },
   { value: "sommelier", label: "Sommelier" },
 ]
 
 const CHANNELS: Choice[] = [
+  NOT_SET,
   { value: "en_personne", label: "En personne" },
   { value: "telephone", label: "Par téléphone" },
 ]
@@ -57,7 +65,7 @@ function ChoiceField({ name, label, choices, defaultValue, error }: ChoiceFieldP
         </SelectTrigger>
         <SelectContent>
           {choices.map((choice) => (
-            <SelectItem key={choice.value} value={choice.value}>
+            <SelectItem key={choice.value ?? ""} value={choice.value}>
               {choice.label}
             </SelectItem>
           ))}
@@ -72,10 +80,59 @@ function ChoiceField({ name, label, choices, defaultValue, error }: ChoiceFieldP
   )
 }
 
-export function ContactDetailsForm({ contact, action }: ContactDetailsFormProps) {
+const LEGEND = "font-mono text-[0.7rem] font-medium tracking-wider uppercase"
+
+type WinesFieldProps = {
+  catalog: CatalogDomain[]
+  checked: string[]
+  error?: string
+}
+
+function WinesField({ catalog, checked, error }: WinesFieldProps) {
+  const checkedIds = new Set(checked)
+
+  return (
+    <fieldset className="flex flex-col gap-3" aria-describedby={error ? "contact-wineIds-erreur" : undefined}>
+      <legend className={`${LEGEND} mb-2`}>Vin(s) dégusté(s)</legend>
+      {catalog.length === 0 ? (
+        <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          Le catalogue est vide.
+          <Link href="/catalogue" className={buttonVariants({ variant: "link", size: "sm", className: "px-0" })}>
+            Remplir le catalogue
+          </Link>
+        </p>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {catalog.map((domain) => (
+            <fieldset key={domain.id} className="flex flex-col gap-2">
+              <legend className="mb-1 font-heading text-lg">{domain.name}</legend>
+              {domain.wines.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Aucun vin.</p>
+              ) : (
+                domain.wines.map((wine) => (
+                  <Label key={wine.id} className="font-sans text-sm font-normal tracking-normal normal-case">
+                    <Checkbox name="wineIds" value={wine.id} defaultChecked={checkedIds.has(wine.id)} />
+                    {wine.name}
+                  </Label>
+                ))
+              )}
+            </fieldset>
+          ))}
+        </div>
+      )}
+      {error && (
+        <p id="contact-wineIds-erreur" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
+    </fieldset>
+  )
+}
+
+export function ContactDetailsForm({ contact, catalog, action }: ContactDetailsFormProps) {
   const [state, formAction, pending] = useActionState(action, {})
   const values = state.values ?? {
-    wineTasted: contact.wineTasted ?? "",
+    wineIds: contact.winesTasted.map((wine) => wine.id),
     comment: contact.comment ?? "",
     lastVisitDate: contact.lastVisitDate ?? "",
     interlocutor: contact.interlocutor ?? "",
@@ -101,11 +158,13 @@ export function ContactDetailsForm({ contact, action }: ContactDetailsFormProps)
           error={state.errors?.channel}
         />
       </div>
+      <WinesField
+        key={values.wineIds?.join(",")}
+        catalog={catalog}
+        checked={values.wineIds ?? []}
+        error={state.errors?.wineIds}
+      />
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="contact-wineTasted">Vin dégusté</Label>
-          <Input id="contact-wineTasted" name="wineTasted" defaultValue={values.wineTasted} />
-        </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="contact-lastVisitDate">Dernière visite</Label>
           <Input

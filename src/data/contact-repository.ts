@@ -1,5 +1,6 @@
-import { createClient, type Client, type Row } from "@libsql/client"
+import { createClient, type Row } from "@libsql/client"
 import { resolveDatabaseUrl } from "@/data/database-config"
+import { migrate } from "@/data/schema"
 
 export type Stage = "premier_contact" | "degustation" | "commande"
 
@@ -7,12 +8,18 @@ export type Interlocutor = "patron" | "sommelier"
 
 export type Channel = "en_personne" | "telephone"
 
+export type TastedWine = {
+  id: string
+  name: string
+  domainName: string
+}
+
 export type StoredContact = {
   id: string
   lastName: string
   firstName: string | null
   restaurant: string
-  wineTasted: string | null
+  winesTasted: TastedWine[]
   comment: string | null
   lastVisitDate: string | null
   stage: Stage
@@ -23,10 +30,9 @@ export type StoredContact = {
 
 export type NewContact = Pick<StoredContact, "lastName" | "firstName" | "restaurant" | "stage">
 
-export type ContactDetails = Pick<
-  StoredContact,
-  "wineTasted" | "comment" | "lastVisitDate" | "interlocutor" | "channel"
->
+export type ContactDetails = Pick<StoredContact, "comment" | "lastVisitDate" | "interlocutor" | "channel"> & {
+  wineIds: string[]
+}
 
 export interface ContactRepository {
   add(contact: NewContact): Promise<StoredContact>
@@ -34,62 +40,30 @@ export interface ContactRepository {
   findWithoutVisitSince(cutoffDate: string): Promise<StoredContact[]>
   findById(id: string): Promise<StoredContact | null>
   update(id: string, details: ContactDetails): Promise<StoredContact | null>
-  advanceStage(id: string, from: Stage, to: Stage): Promise<StoredContact | null>
-}
-
-const CREATE_TABLE = `
-  CREATE TABLE IF NOT EXISTS contacts (
-    id TEXT PRIMARY KEY,
-    last_name TEXT NOT NULL,
-    first_name TEXT,
-    restaurant TEXT NOT NULL,
-    created_at TEXT NOT NULL
-  )
-`
-
-const ADDED_COLUMNS = {
-  wine_tasted: "ALTER TABLE contacts ADD COLUMN wine_tasted TEXT",
-  comment: "ALTER TABLE contacts ADD COLUMN comment TEXT",
-  last_visit_date: "ALTER TABLE contacts ADD COLUMN last_visit_date TEXT",
-  stage: "ALTER TABLE contacts ADD COLUMN stage TEXT NOT NULL DEFAULT 'premier_contact'",
-  interlocutor: "ALTER TABLE contacts ADD COLUMN interlocutor TEXT",
-  channel: "ALTER TABLE contacts ADD COLUMN channel TEXT",
+  changeStage(id: string, from: Stage, to: Stage): Promise<StoredContact | null>
 }
 
 const COLUMNS =
-  "id, last_name, first_name, restaurant, wine_tasted, comment, last_visit_date, stage, interlocutor, channel, created_at"
+  "id, last_name, first_name, restaurant, comment, last_visit_date, stage, interlocutor, channel, created_at"
 
-async function migrate(client: Client): Promise<void> {
-  await client.execute(CREATE_TABLE)
-  const { rows } = await client.execute("PRAGMA table_info(contacts)")
-  const existing = new Set(rows.map((row) => String(row.name)))
-  const missing = Object.entries(ADDED_COLUMNS)
-    .filter(([column]) => !existing.has(column))
-    .map(([, statement]) => statement)
-  for (const statement of missing) {
-    await addColumn(client, statement)
-  }
-}
+const TASTED_WINES = `SELECT contact_wines.contact_id, wines.id, wines.name, domains.name AS domain_name
+  FROM contact_wines
+  JOIN wines ON wines.id = contact_wines.wine_id
+  JOIN domains ON domains.id = wines.domain_id`
 
-async function addColumn(client: Client, statement: string): Promise<void> {
-  try {
-    await client.execute(statement)
-  } catch (error) {
-    if (!(error instanceof Error && /duplicate column name/i.test(error.message))) throw error
-  }
-}
+const TASTED_WINES_ORDER = "ORDER BY domains.name_key, wines.name_key, wines.rowid"
 
 function nullableString(value: Row[string]): string | null {
   return value === null ? null : String(value)
 }
 
-function toContact(row: Row): StoredContact {
+function toContact(row: Row, winesTasted: TastedWine[]): StoredContact {
   return {
     id: String(row.id),
     lastName: String(row.last_name),
     firstName: nullableString(row.first_name),
     restaurant: String(row.restaurant),
-    wineTasted: nullableString(row.wine_tasted),
+    winesTasted,
     comment: nullableString(row.comment),
     lastVisitDate: nullableString(row.last_visit_date),
     stage: String(row.stage) as Stage,
@@ -111,13 +85,30 @@ export function createSqliteContactRepository(
       throw error
     }))
 
+  async function withWines(rows: Row[], contactId?: string): Promise<StoredContact[]> {
+    const result = await client.execute(
+      contactId === undefined
+        ? `${TASTED_WINES} ${TASTED_WINES_ORDER}`
+        : { sql: `${TASTED_WINES} WHERE contact_wines.contact_id = ? ${TASTED_WINES_ORDER}`, args: [contactId] },
+    )
+    const byContact = new Map<string, TastedWine[]>()
+    for (const row of result.rows) {
+      const wines = byContact.get(String(row.contact_id)) ?? []
+      wines.push({ id: String(row.id), name: String(row.name), domainName: String(row.domain_name) })
+      byContact.set(String(row.contact_id), wines)
+    }
+    return rows.map((row) => toContact(row, byContact.get(String(row.id)) ?? []))
+  }
+
   async function findById(id: string): Promise<StoredContact | null> {
     await ensureSchema()
     const result = await client.execute({
       sql: `SELECT ${COLUMNS} FROM contacts WHERE id = ?`,
       args: [id],
     })
-    return result.rows.length > 0 ? toContact(result.rows[0]) : null
+    if (result.rows.length === 0) return null
+    const [contact] = await withWines(result.rows, id)
+    return contact
   }
 
   return {
@@ -126,7 +117,7 @@ export function createSqliteContactRepository(
       const created: StoredContact = {
         ...contact,
         id: crypto.randomUUID(),
-        wineTasted: null,
+        winesTasted: [],
         comment: null,
         lastVisitDate: null,
         interlocutor: null,
@@ -143,7 +134,7 @@ export function createSqliteContactRepository(
     async findAll() {
       await ensureSchema()
       const result = await client.execute(`SELECT ${COLUMNS} FROM contacts ORDER BY created_at, rowid`)
-      return result.rows.map(toContact)
+      return withWines(result.rows)
     },
 
     async findWithoutVisitSince(cutoffDate) {
@@ -154,21 +145,32 @@ export function createSqliteContactRepository(
           ORDER BY last_visit_date IS NOT NULL, last_visit_date, created_at, rowid`,
         args: [cutoffDate],
       })
-      return result.rows.map(toContact)
+      return withWines(result.rows)
     },
 
     findById,
 
     async update(id, details) {
       await ensureSchema()
-      const result = await client.execute({
-        sql: "UPDATE contacts SET wine_tasted = ?, comment = ?, last_visit_date = ?, interlocutor = ?, channel = ? WHERE id = ?",
-        args: [details.wineTasted, details.comment, details.lastVisitDate, details.interlocutor, details.channel, id],
-      })
+      const [result] = await client.batch(
+        [
+          {
+            sql: "UPDATE contacts SET comment = ?, last_visit_date = ?, interlocutor = ?, channel = ? WHERE id = ?",
+            args: [details.comment, details.lastVisitDate, details.interlocutor, details.channel, id],
+          },
+          { sql: "DELETE FROM contact_wines WHERE contact_id = ?", args: [id] },
+          ...details.wineIds.map((wineId) => ({
+            sql: `INSERT OR IGNORE INTO contact_wines (contact_id, wine_id)
+              SELECT contacts.id, wines.id FROM contacts, wines WHERE contacts.id = ? AND wines.id = ?`,
+            args: [id, wineId],
+          })),
+        ],
+        "write",
+      )
       return result.rowsAffected > 0 ? findById(id) : null
     },
 
-    async advanceStage(id, from, to) {
+    async changeStage(id, from, to) {
       await ensureSchema()
       const result = await client.execute({
         sql: "UPDATE contacts SET stage = ? WHERE id = ? AND stage = ?",

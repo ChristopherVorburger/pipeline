@@ -7,13 +7,15 @@ import {
   type Interlocutor,
   type Stage,
   type StoredContact,
+  type TastedWine,
 } from "@/data/contact-repository"
 
-export type { Channel, Interlocutor, Stage }
+export type { Channel, Interlocutor, Stage, TastedWine }
 
 export type Contact = StoredContact & {
   isClient: boolean
   nextStage: Stage | null
+  previousStage: Stage | null
 }
 
 export type ContactInput = {
@@ -32,7 +34,7 @@ export type AddContactResult =
   | { ok: false; errors: ContactErrors }
 
 export type ContactDetailsInput = {
-  wineTasted?: string
+  wineIds?: string[]
   comment?: string
   lastVisitDate?: string
   interlocutor?: string
@@ -40,6 +42,7 @@ export type ContactDetailsInput = {
 }
 
 export type ContactDetailsErrors = {
+  wineIds?: string
   lastVisitDate?: string
   interlocutor?: string
   channel?: string
@@ -56,6 +59,10 @@ export type AdvanceContactStageResult =
   | { ok: true; contact: Contact }
   | { ok: false; reason: "notFound" | "lastStage" | "conflict" }
 
+export type RevertContactStageResult =
+  | { ok: true; contact: Contact }
+  | { ok: false; reason: "notFound" | "firstStage" | "conflict" }
+
 const STAGES: readonly Stage[] = ["premier_contact", "degustation", "commande"]
 
 const FIRST_STAGE: Stage = "premier_contact"
@@ -66,11 +73,16 @@ function nextStageOf(stage: Stage): Stage | null {
   return STAGES[STAGES.indexOf(stage) + 1] ?? null
 }
 
+function previousStageOf(stage: Stage): Stage | null {
+  return STAGES[STAGES.indexOf(stage) - 1] ?? null
+}
+
 function present(contact: StoredContact): Contact {
   return {
     ...contact,
     isClient: contact.stage === CLIENT_STAGE,
     nextStage: nextStageOf(contact.stage),
+    previousStage: previousStageOf(contact.stage),
   }
 }
 
@@ -104,7 +116,10 @@ const newContactSchema = z.object({
 
 function contactDetailsSchema(now: Date) {
   return z.object({
-    wineTasted: optionalText,
+    wineIds: z
+      .array(z.uuid({ error: "Un vin coché est invalide." }), { error: "Un vin coché est invalide." })
+      .default([])
+      .transform((ids) => [...new Set(ids)]),
     comment: optionalText,
     lastVisitDate: optionalText
       .pipe(z.iso.date({ error: "La date de visite est invalide." }).nullable())
@@ -206,8 +221,25 @@ export async function advanceContactStage(
   const next = nextStageOf(contact.stage)
   if (!next) return { ok: false, reason: "lastStage" }
 
-  const advanced = await repository.advanceStage(id.data, contact.stage, next)
+  const advanced = await repository.changeStage(id.data, contact.stage, next)
   return advanced ? { ok: true, contact: present(advanced) } : { ok: false, reason: "conflict" }
+}
+
+export async function revertContactStage(
+  rawId: string,
+  repository: ContactRepository = getContactRepository(),
+): Promise<RevertContactStageResult> {
+  const id = contactId.safeParse(rawId)
+  if (!id.success) return { ok: false, reason: "notFound" }
+
+  const contact = await repository.findById(id.data)
+  if (!contact) return { ok: false, reason: "notFound" }
+
+  const previous = previousStageOf(contact.stage)
+  if (!previous) return { ok: false, reason: "firstStage" }
+
+  const reverted = await repository.changeStage(id.data, contact.stage, previous)
+  return reverted ? { ok: true, contact: present(reverted) } : { ok: false, reason: "conflict" }
 }
 
 export function checkStorage(): void {

@@ -11,7 +11,7 @@ function contact(overrides: Partial<Contact>): Contact {
     lastName: "Durand",
     firstName: null,
     restaurant: "Le Comptoir",
-    wineTasted: null,
+    winesTasted: [],
     comment: null,
     lastVisitDate: null,
     stage: "premier_contact",
@@ -19,6 +19,7 @@ function contact(overrides: Partial<Contact>): Contact {
     channel: null,
     isClient: false,
     nextStage: "degustation",
+    previousStage: null,
     createdAt: "",
     ...overrides,
   }
@@ -58,12 +59,28 @@ describe("ContactList", () => {
     )
   })
 
-  it("affiche la date de dernière visite au format jour/mois/année et le vin dégusté", () => {
-    render(<ContactList contacts={[contact({ lastVisitDate: "2026-11-12", wineTasted: "Chablis 2022" })]} />)
+  it("affiche la date de dernière visite au format jour/mois/année", () => {
+    render(<ContactList contacts={[contact({ lastVisitDate: "2026-11-12" })]} />)
 
-    const item = screen.getByRole("listitem")
-    expect(item.textContent).toContain("12/11/2026")
-    expect(item.textContent).toContain("Chablis 2022")
+    expect(screen.getByRole("listitem").textContent).toContain("12/11/2026")
+  })
+
+  it("affiche chaque vin dégusté avec son domaine", () => {
+    render(
+      <ContactList
+        contacts={[
+          contact({
+            winesTasted: [
+              { id: "w1", name: "Morgon 2022", domainName: "Château Roux" },
+              { id: "w2", name: "Chablis 2023", domainName: "Domaine Dupont" },
+            ],
+          }),
+        ]}
+      />,
+    )
+
+    expect(screen.getByText("Vin · Morgon 2022 · Château Roux")).toBeDefined()
+    expect(screen.getByText("Vin · Chablis 2023 · Domaine Dupont")).toBeDefined()
   })
 
   it("n'affiche ni date ni vin pour un contact sans fiche", () => {
