@@ -4,6 +4,7 @@ import { buttonVariants } from "@/components/ui/button"
 const LINKS = [
   { key: "contacts", href: "/", label: "Contacts" },
   { key: "followUp", href: "/a-relancer", label: "À relancer" },
+  { key: "catalog", href: "/catalogue", label: "Catalogue" },
 ] as const
 
 type MainNavProps = {
