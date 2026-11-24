@@ -76,4 +76,22 @@ describe("ContactStage", () => {
     expect(screen.queryByRole("button", { name: /Étape suivante/ })).toBeNull()
     expect(screen.getByRole("button", { name: "Étape précédente · Dégustation" })).toBeDefined()
   })
+
+  it("place « Étape précédente » à gauche de « Étape suivante »", () => {
+    render(
+      <ContactStage
+        stage="degustation"
+        isClient={false}
+        nextStage="commande"
+        previousStage="premier_contact"
+        action={vi.fn(noop)}
+        revertAction={vi.fn(noop)}
+      />,
+    )
+
+    expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual([
+      "Étape précédente · Premier contact",
+      "Étape suivante · Commande",
+    ])
+  })
 })
