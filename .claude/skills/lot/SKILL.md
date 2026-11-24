@@ -1,6 +1,6 @@
 ---
 name: lot
-description: Traiter un lot de lots.md selon le process du projet : plan validé, TDD, preuves, puis proposition de PR. Utiliser quand l'utilisateur tape « /lot N » ou demande de traiter un lot.
+description: Traiter un lot de LOTS.md selon le process du projet : plan validé, TDD, preuves, puis proposition de PR. Utiliser quand l'utilisateur tape « /lot N » ou demande de traiter un lot.
 argument-hint: "[numéro du lot]"
 disable-model-invocation: true
 ---
@@ -14,7 +14,7 @@ Argument : le numéro du lot ($ARGUMENTS).
 
 - Vérifie qu'aucune PR de dev vers main n'est ouverte : `gh pr list --base main --head dev --state open`. S'il y en a une, STOP : donne-moi son lien et n'écris rien.
 - Travaille sur la branche dev, à jour avec main : `git checkout dev && git pull origin main`.
-- Lis le lot $ARGUMENTS dans lots.md, puis INTENT.md et les règles de .claude/rules/.
+- Lis le lot $ARGUMENTS dans LOTS.md, puis INTENT.md et les règles de .claude/rules/.
 
 ## 2. Planifier, puis attendre ma validation
 
