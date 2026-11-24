@@ -49,6 +49,8 @@ J'ouvre l'URL Vercel, dont l'accès est restreint par Vercel (pas d'authentifica
 - Étant donné le repo public, quand je lance `git ls-files`, alors aucun `.env` ni `*.db` n'est suivi, et les identifiants Turso ne viennent que des variables d'environnement Vercel.
 - Étant donné un visiteur non autorisé, quand il ouvre l'URL, alors Vercel bloque l'accès avant l'app.
 
+À revoir : la migration du schéma (`ALTER TABLE ADD COLUMN` au démarrage, ajoutée au lot 2) est à revoir pour Turso.
+
 ## Décisions
 
 - Champs obligatoires : nom et restaurant. Le prénom est facultatif.

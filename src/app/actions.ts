@@ -1,8 +1,10 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { notFound, redirect } from "next/navigation"
+import type { ContactDetailsFormState } from "@/components/contact-details-form"
 import type { ContactFormState } from "@/components/contact-form"
-import { addContact } from "@/services/contact-service"
+import { addContact, updateContactDetails } from "@/services/contact-service"
 
 export async function createContact(
   _state: ContactFormState,
@@ -21,4 +23,26 @@ export async function createContact(
 
   revalidatePath("/")
   return {}
+}
+
+export async function updateContact(
+  id: string,
+  _state: ContactDetailsFormState,
+  formData: FormData,
+): Promise<ContactDetailsFormState> {
+  const values = {
+    wineTasted: String(formData.get("wineTasted") ?? ""),
+    comment: String(formData.get("comment") ?? ""),
+    lastVisitDate: String(formData.get("lastVisitDate") ?? ""),
+  }
+
+  const result = await updateContactDetails(id, values, new Date())
+  if (!result.ok) {
+    if (result.reason === "notFound") notFound()
+    return { errors: result.errors, values }
+  }
+
+  revalidatePath("/")
+  revalidatePath(`/contacts/${id}`)
+  redirect("/")
 }
