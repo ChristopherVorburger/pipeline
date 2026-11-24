@@ -1,8 +1,9 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { updateContact } from "@/app/actions";
+import { advanceContact, updateContact } from "@/app/actions";
 import { ContactDetailsForm } from "@/components/contact-details-form";
+import { ContactStage } from "@/components/contact-stage";
 import { ModeToggle } from "@/components/mode-toggle";
 import { buttonVariants } from "@/components/ui/button";
 import { getContact } from "@/services/contact-service";
@@ -21,6 +22,12 @@ async function ContactSheet({ params }: { params: Promise<{ id: string }> }) {
         </h2>
         <p className="text-muted-foreground">{contact.restaurant}</p>
       </div>
+      <ContactStage
+        stage={contact.stage}
+        isClient={contact.isClient}
+        nextStage={contact.nextStage}
+        action={advanceContact.bind(null, contact.id)}
+      />
       <ContactDetailsForm contact={contact} action={updateContact.bind(null, contact.id)} />
     </section>
   );
