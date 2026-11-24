@@ -9,6 +9,7 @@ import type { ContactErrors, ContactInput } from "@/services/contact-service"
 export type ContactFormState = {
   errors?: ContactErrors
   values?: ContactInput
+  formError?: string
 }
 
 type ContactFormProps = {
@@ -60,6 +61,11 @@ export function ContactForm({ action }: ContactFormProps) {
           error={state.errors?.restaurant}
         />
       </div>
+      {state.formError && (
+        <p role="alert" className="text-sm text-destructive">
+          {state.formError}
+        </p>
+      )}
       <Button type="submit" disabled={pending} className="self-start">
         Ajouter
       </Button>
