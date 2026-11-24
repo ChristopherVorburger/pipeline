@@ -51,10 +51,50 @@ J'ouvre l'URL Vercel, dont l'accès est restreint par Vercel (pas d'authentifica
 
 À revoir : la migration du schéma (`ALTER TABLE ADD COLUMN` au démarrage, ajoutée au lot 2) est à revoir pour Turso.
 
+## Lot 6 · Corriger l'étape, l'interlocuteur et le canal d'un contact
+
+Si j'ai cliqué sur « Étape suivante » par erreur, je ramène le contact à l'étape d'avant depuis sa fiche, sans toucher au reste de la fiche. L'interlocuteur et le canal ne sont plus réservés au « premier contact » : je les modifie quelle que soit l'étape, clients compris. Les règles vivent dans le service.
+
+- Étant donné un contact en « dégustation », quand je le ramène à l'étape précédente, alors la liste affiche « premier contact », y compris après un redémarrage.
+- Étant donné un client en « commande », quand je le ramène à l'étape précédente, alors il est en « dégustation » et n'est plus client.
+- Étant donné un contact en « premier contact », quand j'affiche sa fiche, alors l'action « étape précédente » n'est pas proposée.
+- Étant donné un contact ramené à l'étape précédente, quand je rouvre sa fiche, alors interlocuteur, canal, vin, commentaire et date de visite sont inchangés.
+- Étant donné la fiche d'un client ouverte dans deux onglets, quand je clique « étape précédente » dans les deux, alors le contact ne recule que d'une étape.
+- Étant donné un contact en « dégustation », quand je choisis « patron » et « en personne » puis j'enregistre, alors je les retrouve sur sa fiche après un redémarrage.
+- Étant donné un client, quand je change son interlocuteur et son canal puis j'enregistre, alors je retrouve les nouvelles valeurs sur sa fiche.
+- Étant donné un contact dont l'interlocuteur est renseigné, quand je le vide puis j'enregistre, alors sa fiche n'affiche plus d'interlocuteur.
+- Étant donné un contact avec interlocuteur et canal, quand je le passe à l'étape suivante ou précédente, alors interlocuteur et canal sont conservés.
+
+## Lot 7 · Tenir le catalogue des domaines et de leurs vins
+
+J'ouvre la vue « Catalogue » et j'y ajoute les domaines que je représente, puis les vins de chaque domaine. Les fiches des contacts ne changent pas encore.
+
+- Étant donné un catalogue vide, quand j'ouvre « Catalogue », alors je vois un message « aucun domaine ».
+- Étant donné le catalogue, quand j'ajoute un domaine, alors il y apparaît, y compris après un redémarrage.
+- Étant donné un domaine, quand j'y ajoute un vin, alors il apparaît sous ce domaine, y compris après un redémarrage.
+- Étant donné deux domaines, quand j'ajoute un vin au second, alors il n'apparaît pas sous le premier.
+- Étant donné un domaine ou un vin sans nom, quand je valide, alors l'ajout est refusé et le champ manquant est signalé.
+- Étant donné un domaine qui existe déjà, ou un vin qui existe déjà dans ce domaine, quand je valide, alors l'ajout est refusé et la raison est affichée.
+
+## Lot 8 · Cocher les vins dégustés sur la fiche d'un contact
+
+Sur la fiche d'un contact, le champ libre « vin dégusté » devient une liste « Vin(s) dégusté(s) » : les vins du catalogue regroupés par domaine, chacun avec une case à cocher. Les anciens textes saisis sont recopiés dans le commentaire. Seule la base locale `pipeline.db` est concernée : il n'y a pas encore de base en production.
+
+- Étant donné un catalogue avec deux domaines, quand j'ouvre la fiche d'un contact, alors je vois « Vin(s) dégusté(s) » avec les vins regroupés par domaine, chacun avec une case à cocher.
+- Étant donné deux vins de domaines différents cochés, quand j'enregistre, alors je les retrouve cochés en rouvrant la fiche, y compris après un redémarrage.
+- Étant donné un vin coché, quand je le décoche puis j'enregistre, alors il n'est plus coché.
+- Étant donné un contact avec des vins dégustés, quand j'affiche la liste, alors elle affiche ces vins avec leur domaine.
+- Étant donné un catalogue vide, quand j'ouvre la fiche d'un contact, alors un message m'invite à remplir le catalogue, avec un lien vers lui.
+- Étant donné un contact dont l'ancien « vin dégusté » contient « Morgon 2022 » et dont le commentaire est « Rappeler lundi », quand l'app démarre après le lot, alors son commentaire devient « Rappeler lundi » suivi d'une ligne « Vin dégusté : Morgon 2022 ».
+- Étant donné un contact dont l'ancien « vin dégusté » contient du texte et dont le commentaire est vide, quand l'app démarre après le lot, alors son commentaire est « Vin dégusté : <texte> ».
+- Étant donné l'app redémarrée une seconde fois, quand j'ouvre la fiche, alors le texte n'est pas recopié deux fois.
+
 ## Décisions
 
 - Champs obligatoires : nom et restaurant. Le prénom est facultatif.
 - Un contact sans aucune visite apparaît dans « À relancer ».
-- Interlocuteur (patron ou sommelier) et canal (en personne ou par téléphone) sont deux champs, saisis à l'étape « premier contact ».
-- Pas de retour à l'étape précédente.
+- Interlocuteur (patron ou sommelier) et canal (en personne ou par téléphone) sont deux champs, modifiables à toutes les étapes.
+- Retour à l'étape précédente possible, d'une étape à la fois. Un client ramené en dégustation redevient prospect.
+- Catalogue : on ajoute des domaines et des vins. Les modifier ou les supprimer est hors périmètre pour l'instant.
+- Les anciens « vin dégusté » en texte libre sont recopiés à la fin du commentaire.
 - Hors périmètre : authentification, droits, multi-utilisateur, suppression et recherche de contact.
