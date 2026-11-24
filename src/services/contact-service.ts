@@ -7,9 +7,10 @@ import {
   type Interlocutor,
   type Stage,
   type StoredContact,
+  type TastedWine,
 } from "@/data/contact-repository"
 
-export type { Channel, Interlocutor, Stage }
+export type { Channel, Interlocutor, Stage, TastedWine }
 
 export type Contact = StoredContact & {
   isClient: boolean
@@ -33,7 +34,7 @@ export type AddContactResult =
   | { ok: false; errors: ContactErrors }
 
 export type ContactDetailsInput = {
-  wineTasted?: string
+  wineIds?: string[]
   comment?: string
   lastVisitDate?: string
   interlocutor?: string
@@ -41,6 +42,7 @@ export type ContactDetailsInput = {
 }
 
 export type ContactDetailsErrors = {
+  wineIds?: string
   lastVisitDate?: string
   interlocutor?: string
   channel?: string
@@ -114,7 +116,10 @@ const newContactSchema = z.object({
 
 function contactDetailsSchema(now: Date) {
   return z.object({
-    wineTasted: optionalText,
+    wineIds: z
+      .array(z.uuid({ error: "Un vin coché est invalide." }), { error: "Un vin coché est invalide." })
+      .default([])
+      .transform((ids) => [...new Set(ids)]),
     comment: optionalText,
     lastVisitDate: optionalText
       .pipe(z.iso.date({ error: "La date de visite est invalide." }).nullable())

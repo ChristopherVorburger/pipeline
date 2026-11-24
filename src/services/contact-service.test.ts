@@ -5,6 +5,7 @@ import type {
   NewContact,
   Stage,
   StoredContact,
+  TastedWine,
 } from "@/data/contact-repository"
 import {
   addContact,
@@ -20,6 +21,12 @@ import {
 
 const DURAND_ID = "3f2b8c1e-5d4a-4e6f-9a7b-1c2d3e4f5a6b"
 
+const MORGON: TastedWine = { id: "7b2c1d3e-4f5a-4b6c-8d7e-9f0a1b2c3d4e", name: "Morgon 2022", domainName: "Château Roux" }
+
+const CHABLIS: TastedWine = { id: "8c3d2e4f-5a6b-4c7d-9e8f-0a1b2c3d4e5f", name: "Chablis 2023", domainName: "Domaine Dupont" }
+
+const WINES = new Map([MORGON, CHABLIS].map((wine) => [wine.id, wine]))
+
 function createFakeRepository(initial: StoredContact[] = []) {
   const contacts = [...initial]
   const repository: ContactRepository = {
@@ -27,7 +34,7 @@ function createFakeRepository(initial: StoredContact[] = []) {
       const created: StoredContact = {
         ...contact,
         id: crypto.randomUUID(),
-        wineTasted: null,
+        winesTasted: [],
         comment: null,
         lastVisitDate: null,
         interlocutor: null,
@@ -45,7 +52,9 @@ function createFakeRepository(initial: StoredContact[] = []) {
     update: vi.fn(async (id: string, details: ContactDetails) => {
       const index = contacts.findIndex((c) => c.id === id)
       if (index === -1) return null
-      contacts[index] = { ...contacts[index], ...details }
+      const { wineIds, ...rest } = details
+      const winesTasted = wineIds.flatMap((id) => WINES.get(id) ?? [])
+      contacts[index] = { ...contacts[index], ...rest, winesTasted }
       return contacts[index]
     }),
     changeStage: vi.fn(async (id: string, from: Stage, to: Stage) => {
@@ -64,7 +73,7 @@ function durand(overrides: Partial<StoredContact> = {}): StoredContact {
     lastName: "Durand",
     firstName: null,
     restaurant: "Le Comptoir",
-    wineTasted: null,
+    winesTasted: [],
     comment: null,
     lastVisitDate: null,
     stage: "premier_contact",
@@ -193,7 +202,7 @@ describe("addContact", () => {
 
 describe("getContact", () => {
   it("renvoie le contact correspondant à l'id", async () => {
-    const contact = durand({ wineTasted: "Chablis" })
+    const contact = durand({ winesTasted: [MORGON] })
 
     expect(await getContact(DURAND_ID, createFakeRepository([contact]))).toEqual({
       ok: true,
@@ -219,19 +228,19 @@ describe("getContact", () => {
 })
 
 describe("updateContactDetails", () => {
-  it("enregistre le vin et le commentaire, puis les retrouve sur la fiche", async () => {
+  it("enregistre les vins cochés et le commentaire, puis les retrouve sur la fiche", async () => {
     const repository = createFakeRepository([durand()])
 
     const result = await updateContactDetails(
       DURAND_ID,
-      { wineTasted: "Chablis 2022", comment: "Rappeler en décembre", lastVisitDate: "" },
+      { wineIds: [MORGON.id, CHABLIS.id], comment: "Rappeler en décembre", lastVisitDate: "" },
       NOW,
       repository,
     )
 
     expect(result.ok).toBe(true)
     expect(repository.update).toHaveBeenCalledWith(DURAND_ID, {
-      wineTasted: "Chablis 2022",
+      wineIds: [MORGON.id, CHABLIS.id],
       comment: "Rappeler en décembre",
       lastVisitDate: null,
       interlocutor: null,
@@ -239,17 +248,17 @@ describe("updateContactDetails", () => {
     })
     expect(await getContact(DURAND_ID, repository)).toEqual({
       ok: true,
-      contact: shown(durand({ wineTasted: "Chablis 2022", comment: "Rappeler en décembre" })),
+      contact: shown(durand({ winesTasted: [MORGON, CHABLIS], comment: "Rappeler en décembre" })),
     })
   })
 
   it("enlève les espaces autour des valeurs et transforme les champs vides en null", async () => {
-    const repository = createFakeRepository([durand({ wineTasted: "Chablis", comment: "Bien" })])
+    const repository = createFakeRepository([durand({ winesTasted: [MORGON], comment: "Bien" })])
 
-    await updateContactDetails(DURAND_ID, { wineTasted: "  Morgon ", comment: "   " }, NOW, repository)
+    await updateContactDetails(DURAND_ID, { comment: "   " }, NOW, repository)
 
     expect(repository.update).toHaveBeenCalledWith(DURAND_ID, {
-      wineTasted: "Morgon",
+      wineIds: [],
       comment: null,
       lastVisitDate: null,
       interlocutor: null,
@@ -324,7 +333,7 @@ describe("updateContactDetails", () => {
   it("renvoie notFound pour un id qui n'est pas un UUID, sans appeler update", async () => {
     const repository = createFakeRepository([durand()])
 
-    const result = await updateContactDetails("abc", { wineTasted: "Chablis" }, NOW, repository)
+    const result = await updateContactDetails("abc", { comment: "Bien" }, NOW, repository)
 
     expect(result).toEqual({ ok: false, reason: "notFound" })
     expect(repository.update).not.toHaveBeenCalled()
@@ -335,12 +344,48 @@ describe("updateContactDetails", () => {
 
     const result = await updateContactDetails(
       "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
-      { wineTasted: "Chablis" },
+      { comment: "Bien" },
       NOW,
       repository,
     )
 
     expect(result).toEqual({ ok: false, reason: "notFound" })
+  })
+})
+
+describe("updateContactDetails · vins dégustés", () => {
+  it("décoche tous les vins quand aucun n'est envoyé", async () => {
+    const repository = createFakeRepository([durand({ winesTasted: [MORGON, CHABLIS] })])
+
+    const result = await updateContactDetails(DURAND_ID, { wineIds: [] }, NOW, repository)
+
+    expect(repository.update).toHaveBeenCalledWith(DURAND_ID, expect.objectContaining({ wineIds: [] }))
+    expect(result).toMatchObject({ ok: true, contact: { winesTasted: [] } })
+  })
+
+  it("décoche un vin et garde l'autre", async () => {
+    const repository = createFakeRepository([durand({ winesTasted: [MORGON, CHABLIS] })])
+
+    const result = await updateContactDetails(DURAND_ID, { wineIds: [CHABLIS.id] }, NOW, repository)
+
+    expect(result).toMatchObject({ ok: true, contact: { winesTasted: [CHABLIS] } })
+  })
+
+  it("n'enregistre qu'une fois un vin coché deux fois", async () => {
+    const repository = createFakeRepository([durand()])
+
+    await updateContactDetails(DURAND_ID, { wineIds: [MORGON.id, MORGON.id] }, NOW, repository)
+
+    expect(repository.update).toHaveBeenCalledWith(DURAND_ID, expect.objectContaining({ wineIds: [MORGON.id] }))
+  })
+
+  it("refuse un vin coché dont l'identifiant est invalide, sans rien enregistrer", async () => {
+    const repository = createFakeRepository([durand()])
+
+    const result = await updateContactDetails(DURAND_ID, { wineIds: [MORGON.id, "abc"] }, NOW, repository)
+
+    expect(result).toEqual({ ok: false, reason: "invalid", errors: { wineIds: "Un vin coché est invalide." } })
+    expect(repository.update).not.toHaveBeenCalled()
   })
 })
 
@@ -539,13 +584,13 @@ describe("revertContactStage", () => {
   })
 
   it("garde interlocuteur, canal, vin, commentaire et date de visite", async () => {
-    const details = {
-      wineTasted: "Chablis",
+    const details: Partial<StoredContact> = {
+      winesTasted: [MORGON],
       comment: "Rappeler",
       lastVisitDate: "2026-11-12",
       interlocutor: "patron",
       channel: "en_personne",
-    } as const
+    }
     const repository = createFakeRepository([durand({ stage: "commande", ...details })])
 
     const result = await revertContactStage(DURAND_ID, repository)

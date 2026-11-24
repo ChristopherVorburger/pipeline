@@ -28,7 +28,7 @@ const contact: Contact = {
   lastName: "Durand",
   firstName: null,
   restaurant: "Le Comptoir",
-  wineTasted: null,
+  winesTasted: [],
   comment: null,
   lastVisitDate: null,
   stage: "premier_contact",
@@ -94,7 +94,6 @@ describe("updateContact", () => {
       ID,
       {},
       form({
-        wineTasted: "Chablis",
         comment: "Bien",
         lastVisitDate: "2026-11-12",
         interlocutor: "sommelier",
@@ -105,7 +104,7 @@ describe("updateContact", () => {
     expect(updateContactDetails).toHaveBeenCalledWith(
       ID,
       {
-        wineTasted: "Chablis",
+        wineIds: [],
         comment: "Bien",
         lastVisitDate: "2026-11-12",
         interlocutor: "sommelier",
@@ -129,7 +128,7 @@ describe("updateContact", () => {
 
     expect(state).toEqual({
       errors: { lastVisitDate: "La date de visite ne peut pas être dans le futur." },
-      values: { wineTasted: "", comment: "", lastVisitDate: "2027-01-01", interlocutor: "", channel: "" },
+      values: { wineIds: [], comment: "", lastVisitDate: "2027-01-01", interlocutor: "", channel: "" },
     })
     expect(redirect).not.toHaveBeenCalled()
   })
@@ -137,9 +136,34 @@ describe("updateContact", () => {
   it("affiche la page introuvable quand le service ne trouve pas le contact", async () => {
     vi.mocked(updateContactDetails).mockResolvedValue({ ok: false, reason: "notFound" })
 
-    await updateContact("abc", {}, form({ wineTasted: "Chablis" }))
+    await updateContact("abc", {}, form({ comment: "Bien" }))
 
     expect(notFound).toHaveBeenCalled()
+  })
+
+  it("transmet au service tous les vins cochés", async () => {
+    vi.mocked(updateContactDetails).mockResolvedValue({ ok: true, contact })
+    const formData = form({ comment: "" })
+    formData.append("wineIds", "w1")
+    formData.append("wineIds", "w2")
+
+    await updateContact(ID, {}, formData)
+
+    expect(updateContactDetails).toHaveBeenCalledWith(
+      ID,
+      expect.objectContaining({ wineIds: ["w1", "w2"] }),
+      expect.any(Date),
+    )
+  })
+
+  it("refuse un fichier à la place d'un vin coché sans appeler le service", async () => {
+    const formData = form({ comment: "" })
+    formData.append("wineIds", new File(["x"], "vin.txt"))
+
+    const state = await updateContact(ID, {}, formData)
+
+    expect(state).toEqual({ formError: FORM_ERROR })
+    expect(updateContactDetails).not.toHaveBeenCalled()
   })
 
   it("refuse un fichier à la place d'un texte sans appeler le service", async () => {

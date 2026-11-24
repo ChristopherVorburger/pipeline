@@ -1,5 +1,6 @@
-import { createClient, type Client, type Row } from "@libsql/client"
+import { createClient, type Row } from "@libsql/client"
 import { resolveDatabaseUrl } from "@/data/database-config"
+import { migrate } from "@/data/schema"
 
 export type StoredDomain = {
   id: string
@@ -21,27 +22,6 @@ export interface CatalogRepository {
   findDomainById(id: string): Promise<StoredDomain | null>
   addDomain(name: string): Promise<StoredDomain | null>
   addWine(domainId: string, name: string): Promise<StoredWine | null>
-}
-
-const SCHEMA = [
-  `CREATE TABLE IF NOT EXISTS domains (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL COLLATE NOCASE UNIQUE,
-    created_at TEXT NOT NULL
-  )`,
-  `CREATE TABLE IF NOT EXISTS wines (
-    id TEXT PRIMARY KEY,
-    domain_id TEXT NOT NULL REFERENCES domains(id),
-    name TEXT NOT NULL COLLATE NOCASE,
-    created_at TEXT NOT NULL,
-    UNIQUE (domain_id, name)
-  )`,
-]
-
-async function migrate(client: Client): Promise<void> {
-  for (const statement of SCHEMA) {
-    await client.execute(statement)
-  }
 }
 
 function toDomain(row: Row): StoredDomain {

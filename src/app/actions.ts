@@ -18,7 +18,7 @@ const contactForm = z.object({
 })
 
 const contactDetailsForm = z.object({
-  wineTasted: formText,
+  wineIds: z.array(z.string()).default([]),
   comment: formText,
   lastVisitDate: formText,
   interlocutor: formText,
@@ -48,7 +48,7 @@ export async function updateContact(
   _state: ContactDetailsFormState,
   formData: FormData,
 ): Promise<ContactDetailsFormState> {
-  const parsed = contactDetailsForm.safeParse(Object.fromEntries(formData))
+  const parsed = contactDetailsForm.safeParse({ ...Object.fromEntries(formData), wineIds: formData.getAll("wineIds") })
   if (!parsed.success) return { formError: FORM_ERROR }
   const values = parsed.data
 

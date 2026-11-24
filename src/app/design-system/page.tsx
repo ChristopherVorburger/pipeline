@@ -14,6 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -101,7 +102,7 @@ export default function DesignSystemPage() {
             Dégustation chez Camille Roux, retour très positif sur le blanc. Repasser avec la cuvée rouge.
           </p>
           <p className="text-sm text-muted-foreground">Dernière visite le 10 novembre 2026</p>
-          <p className="font-mono text-xs tracking-wider text-muted-foreground uppercase">Vin dégusté</p>
+          <p className="font-mono text-xs tracking-wider text-muted-foreground uppercase">Vin(s) dégusté(s)</p>
         </div>
         <dl className="grid gap-2 font-mono text-xs text-muted-foreground sm:grid-cols-3">
           <div><dt className="text-foreground">Titres</dt><dd>Instrument Serif</dd></div>
@@ -168,6 +169,17 @@ export default function DesignSystemPage() {
             <Label htmlFor="ds-desactive">Désactivé</Label>
             <Input id="ds-desactive" disabled defaultValue="Non modifiable" />
           </div>
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-2 font-mono text-[0.7rem] font-medium tracking-wider uppercase">Vin(s) dégusté(s)</legend>
+            <Label className="font-sans text-sm font-normal tracking-normal normal-case">
+              <Checkbox defaultChecked />
+              Saumur-Champigny 2022
+            </Label>
+            <Label className="font-sans text-sm font-normal tracking-normal normal-case">
+              <Checkbox />
+              Chinon 2023
+            </Label>
+          </fieldset>
         </div>
       </Section>
 
@@ -209,7 +221,7 @@ export default function DesignSystemPage() {
             </div>
             <dl className="flex flex-col gap-3">
               <div>
-                <dt className="font-mono text-[0.65rem] tracking-wider text-muted-foreground uppercase">Vin dégusté</dt>
+                <dt className="font-mono text-[0.65rem] tracking-wider text-muted-foreground uppercase">Vin(s) dégusté(s)</dt>
                 <dd>Saumur-Champigny 2022</dd>
               </div>
               <div>
