@@ -1,6 +1,6 @@
 import { createClient, type Row } from "@libsql/client"
 import { resolveDatabaseUrl } from "@/data/database-config"
-import { migrate } from "@/data/schema"
+import { migrate, nameKey } from "@/data/schema"
 
 export type StoredDomain = {
   id: string
@@ -52,8 +52,8 @@ export function createSqliteCatalogRepository(
   return {
     async findAll() {
       await ensureSchema()
-      const domains = await client.execute("SELECT id, name, created_at FROM domains ORDER BY name, rowid")
-      const wines = await client.execute("SELECT id, domain_id, name, created_at FROM wines ORDER BY name, rowid")
+      const domains = await client.execute("SELECT id, name, created_at FROM domains ORDER BY name_key, name, rowid")
+      const wines = await client.execute("SELECT id, domain_id, name, created_at FROM wines ORDER BY name_key, name, rowid")
       const storedWines = wines.rows.map(toWine)
       return domains.rows.map(toDomain).map((domain) => ({
         ...domain,
@@ -74,8 +74,8 @@ export function createSqliteCatalogRepository(
       await ensureSchema()
       const domain: StoredDomain = { id: crypto.randomUUID(), name, createdAt: new Date().toISOString() }
       const result = await client.execute({
-        sql: "INSERT INTO domains (id, name, created_at) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
-        args: [domain.id, domain.name, domain.createdAt],
+        sql: "INSERT INTO domains (id, name, name_key, created_at) VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING",
+        args: [domain.id, domain.name, nameKey(domain.name), domain.createdAt],
       })
       return result.rowsAffected > 0 ? domain : null
     },
@@ -84,8 +84,8 @@ export function createSqliteCatalogRepository(
       await ensureSchema()
       const wine: StoredWine = { id: crypto.randomUUID(), domainId, name, createdAt: new Date().toISOString() }
       const result = await client.execute({
-        sql: "INSERT INTO wines (id, domain_id, name, created_at) VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING",
-        args: [wine.id, wine.domainId, wine.name, wine.createdAt],
+        sql: "INSERT INTO wines (id, domain_id, name, name_key, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING",
+        args: [wine.id, wine.domainId, wine.name, nameKey(wine.name), wine.createdAt],
       })
       return result.rowsAffected > 0 ? wine : null
     },

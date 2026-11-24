@@ -51,7 +51,7 @@ const TASTED_WINES = `SELECT contact_wines.contact_id, wines.id, wines.name, dom
   JOIN wines ON wines.id = contact_wines.wine_id
   JOIN domains ON domains.id = wines.domain_id`
 
-const TASTED_WINES_ORDER = "ORDER BY domains.name, wines.name, wines.rowid"
+const TASTED_WINES_ORDER = "ORDER BY domains.name_key, wines.name_key, wines.rowid"
 
 function nullableString(value: Row[string]): string | null {
   return value === null ? null : String(value)
