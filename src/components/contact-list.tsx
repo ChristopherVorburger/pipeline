@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { StageBadge } from "@/components/stage-badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Contact } from "@/services/contact-service"
 
@@ -30,6 +31,7 @@ export function ContactList({ contacts }: ContactListProps) {
                   {[contact.firstName, contact.lastName].filter(Boolean).join(" ")}
                 </CardTitle>
                 <CardDescription>{contact.restaurant}</CardDescription>
+                <StageBadge stage={contact.stage} isClient={contact.isClient} />
               </CardHeader>
               {(contact.lastVisitDate || contact.wineTasted) && (
                 <CardContent className="flex flex-wrap gap-x-6 gap-y-1 font-mono text-xs tracking-wider uppercase text-muted-foreground">

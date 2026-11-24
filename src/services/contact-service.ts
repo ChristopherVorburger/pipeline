@@ -1,12 +1,20 @@
 import * as z from "zod"
 import {
   getContactRepository,
-  type Contact,
+  type Channel,
   type ContactDetails,
   type ContactRepository,
+  type Interlocutor,
+  type Stage,
+  type StoredContact,
 } from "@/data/contact-repository"
 
-export type { Contact }
+export type { Channel, Interlocutor, Stage }
+
+export type Contact = StoredContact & {
+  isClient: boolean
+  nextStage: Stage | null
+}
 
 export type ContactInput = {
   lastName?: string
@@ -27,10 +35,14 @@ export type ContactDetailsInput = {
   wineTasted?: string
   comment?: string
   lastVisitDate?: string
+  interlocutor?: string
+  channel?: string
 }
 
 export type ContactDetailsErrors = {
   lastVisitDate?: string
+  interlocutor?: string
+  channel?: string
 }
 
 export type GetContactResult = { ok: true; contact: Contact } | { ok: false; reason: "notFound" }
@@ -40,10 +52,32 @@ export type UpdateContactDetailsResult =
   | { ok: false; reason: "notFound" }
   | { ok: false; reason: "invalid"; errors: ContactDetailsErrors }
 
-export function listContacts(
+export type AdvanceContactStageResult =
+  | { ok: true; contact: Contact }
+  | { ok: false; reason: "notFound" | "lastStage" | "conflict" }
+
+const STAGES: readonly Stage[] = ["premier_contact", "degustation", "commande"]
+
+const FIRST_STAGE: Stage = "premier_contact"
+
+const CLIENT_STAGE: Stage = "commande"
+
+function nextStageOf(stage: Stage): Stage | null {
+  return STAGES[STAGES.indexOf(stage) + 1] ?? null
+}
+
+function present(contact: StoredContact): Contact {
+  return {
+    ...contact,
+    isClient: contact.stage === CLIENT_STAGE,
+    nextStage: nextStageOf(contact.stage),
+  }
+}
+
+export async function listContacts(
   repository: ContactRepository = getContactRepository(),
 ): Promise<Contact[]> {
-  return repository.findAll()
+  return (await repository.findAll()).map(present)
 }
 
 const TIME_ZONE = "Europe/Paris"
@@ -56,6 +90,9 @@ const optionalText = z
   .transform((value) => value?.trim() || null)
 
 const contactId = z.uuid()
+
+const optionalChoice = <T extends string>(values: readonly [T, ...T[]], message: string) =>
+  optionalText.pipe(z.enum(values, { error: message }).nullable())
 
 const newContactSchema = z.object({
   lastName: requiredText("Le nom est obligatoire."),
@@ -72,6 +109,11 @@ function contactDetailsSchema(now: Date) {
       .refine((date) => date === null || date <= todayIn(TIME_ZONE, now), {
         error: "La date de visite ne peut pas être dans le futur.",
       }),
+    interlocutor: optionalChoice<Interlocutor>(
+      ["patron", "sommelier"],
+      "L'interlocuteur doit être le patron ou le sommelier.",
+    ),
+    channel: optionalChoice<Channel>(["en_personne", "telephone"], "Le canal doit être en personne ou par téléphone."),
   })
 }
 
@@ -102,8 +144,8 @@ export async function addContact(
     return { ok: false, errors: firstErrors(parsed.error) }
   }
 
-  const contact = await repository.add(parsed.data)
-  return { ok: true, contact }
+  const contact = await repository.add({ ...parsed.data, stage: FIRST_STAGE })
+  return { ok: true, contact: present(contact) }
 }
 
 export async function getContact(
@@ -113,7 +155,7 @@ export async function getContact(
   const id = contactId.safeParse(rawId)
   if (!id.success) return { ok: false, reason: "notFound" }
   const contact = await repository.findById(id.data)
-  return contact ? { ok: true, contact } : { ok: false, reason: "notFound" }
+  return contact ? { ok: true, contact: present(contact) } : { ok: false, reason: "notFound" }
 }
 
 export async function updateContactDetails(
@@ -132,7 +174,24 @@ export async function updateContactDetails(
 
   const details: ContactDetails = parsed.data
   const contact = await repository.update(id.data, details)
-  return contact ? { ok: true, contact } : { ok: false, reason: "notFound" }
+  return contact ? { ok: true, contact: present(contact) } : { ok: false, reason: "notFound" }
+}
+
+export async function advanceContactStage(
+  rawId: string,
+  repository: ContactRepository = getContactRepository(),
+): Promise<AdvanceContactStageResult> {
+  const id = contactId.safeParse(rawId)
+  if (!id.success) return { ok: false, reason: "notFound" }
+
+  const contact = await repository.findById(id.data)
+  if (!contact) return { ok: false, reason: "notFound" }
+
+  const next = nextStageOf(contact.stage)
+  if (!next) return { ok: false, reason: "lastStage" }
+
+  const advanced = await repository.advanceStage(id.data, contact.stage, next)
+  return advanced ? { ok: true, contact: present(advanced) } : { ok: false, reason: "conflict" }
 }
 
 export function checkStorage(): void {

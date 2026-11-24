@@ -14,6 +14,11 @@ function contact(overrides: Partial<Contact>): Contact {
     wineTasted: null,
     comment: null,
     lastVisitDate: null,
+    stage: "premier_contact",
+    interlocutor: null,
+    channel: null,
+    isClient: false,
+    nextStage: "degustation",
     createdAt: "",
     ...overrides,
   }
@@ -68,5 +73,24 @@ describe("ContactList", () => {
     expect(item.textContent).not.toMatch(/\d{2}\/\d{2}\/\d{4}/)
     expect(screen.queryByText(/Dernière visite/)).toBeNull()
     expect(screen.queryByText(/Vin/)).toBeNull()
+  })
+
+  it("affiche l'étape de chaque contact et signale les clients", () => {
+    render(
+      <ContactList
+        contacts={[
+          contact({ id: "1" }),
+          contact({ id: "2", stage: "degustation", nextStage: "commande" }),
+          contact({ id: "3", stage: "commande", isClient: true, nextStage: null }),
+        ]}
+      />,
+    )
+
+    const items = screen.getAllByRole("listitem")
+    expect(items[0].textContent).toContain("Premier contact")
+    expect(items[1].textContent).toContain("Dégustation")
+    expect(items[2].textContent).toContain("Commande")
+    expect(items[2].textContent).toContain("Client")
+    expect(items[0].textContent).not.toContain("Client")
   })
 })
