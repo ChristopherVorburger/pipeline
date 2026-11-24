@@ -2,10 +2,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { revalidatePath } from "next/cache"
 import { notFound, redirect } from "next/navigation"
-import { advanceContact, createContact, updateContact } from "@/app/actions"
+import { advanceContact, createContact, revertContact, updateContact } from "@/app/actions"
 import {
   addContact,
   advanceContactStage,
+  revertContactStage,
   updateContactDetails,
   type Contact,
 } from "@/services/contact-service"
@@ -15,6 +16,7 @@ vi.mock("next/navigation", () => ({ notFound: vi.fn(), redirect: vi.fn() }))
 vi.mock("@/services/contact-service", () => ({
   addContact: vi.fn(),
   advanceContactStage: vi.fn(),
+  revertContactStage: vi.fn(),
   updateContactDetails: vi.fn(),
 }))
 
@@ -34,6 +36,7 @@ const contact: Contact = {
   channel: null,
   isClient: false,
   nextStage: "degustation",
+  previousStage: null,
   createdAt: "2026-11-23T10:00:00.000Z",
 }
 
@@ -173,6 +176,36 @@ describe("advanceContact", () => {
     vi.mocked(advanceContactStage).mockResolvedValue({ ok: false, reason: "notFound" })
 
     await advanceContact("abc")
+
+    expect(notFound).toHaveBeenCalled()
+  })
+})
+
+describe("revertContact", () => {
+  it("ramène le contact à l'étape précédente puis rafraîchit la liste et la fiche", async () => {
+    vi.mocked(revertContactStage).mockResolvedValue({ ok: true, contact })
+
+    await revertContact(ID)
+
+    expect(revertContactStage).toHaveBeenCalledWith(ID)
+    expect(revalidatePath).toHaveBeenCalledWith("/")
+    expect(revalidatePath).toHaveBeenCalledWith("/a-relancer")
+    expect(revalidatePath).toHaveBeenCalledWith(`/contacts/${ID}`)
+  })
+
+  it("rafraîchit la fiche sans erreur quand le contact a déjà reculé", async () => {
+    vi.mocked(revertContactStage).mockResolvedValue({ ok: false, reason: "conflict" })
+
+    await revertContact(ID)
+
+    expect(notFound).not.toHaveBeenCalled()
+    expect(revalidatePath).toHaveBeenCalledWith(`/contacts/${ID}`)
+  })
+
+  it("affiche la page introuvable quand le service ne trouve pas le contact", async () => {
+    vi.mocked(revertContactStage).mockResolvedValue({ ok: false, reason: "notFound" })
+
+    await revertContact("abc")
 
     expect(notFound).toHaveBeenCalled()
   })

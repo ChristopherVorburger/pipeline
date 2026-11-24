@@ -246,7 +246,7 @@ describe("createSqliteContactRepository", () => {
     const first = createSqliteContactRepository(url)
     const added = await first.add({ lastName: "Durand", firstName: null, restaurant: "Le Comptoir", stage: "premier_contact" })
 
-    const advanced = await first.advanceStage(added.id, "premier_contact", "degustation")
+    const advanced = await first.changeStage(added.id, "premier_contact", "degustation")
     first.close()
 
     expect(advanced).toEqual({ ...added, stage: "degustation" })
@@ -259,17 +259,38 @@ describe("createSqliteContactRepository", () => {
     const repository = createSqliteContactRepository(url)
     const added = await repository.add({ lastName: "Durand", firstName: null, restaurant: "Le Comptoir", stage: "degustation" })
 
-    const result = await repository.advanceStage(added.id, "premier_contact", "degustation")
+    const result = await repository.changeStage(added.id, "premier_contact", "degustation")
 
     expect(result).toBeNull()
     expect(await repository.findById(added.id)).toMatchObject({ stage: "degustation" })
     repository.close()
   })
 
+  it("ramène l'étape en arrière sans toucher au reste de la fiche, y compris après réouverture", async () => {
+    const first = createSqliteContactRepository(url)
+    const added = await first.add({ lastName: "Durand", firstName: null, restaurant: "Le Comptoir", stage: "commande" })
+    const details = {
+      wineTasted: "Chablis",
+      comment: "Rappeler",
+      lastVisitDate: "2026-11-12",
+      interlocutor: "patron",
+      channel: "en_personne",
+    } as const
+    await first.update(added.id, details)
+
+    const reverted = await first.changeStage(added.id, "commande", "degustation")
+    first.close()
+
+    expect(reverted).toEqual({ ...added, ...details, stage: "degustation" })
+    const second = createSqliteContactRepository(url)
+    expect(await second.findById(added.id)).toEqual({ ...added, ...details, stage: "degustation" })
+    second.close()
+  })
+
   it("renvoie null pour le changement d'étape d'un id inconnu", async () => {
     const repository = createSqliteContactRepository(url)
 
-    expect(await repository.advanceStage(crypto.randomUUID(), "premier_contact", "degustation")).toBeNull()
+    expect(await repository.changeStage(crypto.randomUUID(), "premier_contact", "degustation")).toBeNull()
     repository.close()
   })
 

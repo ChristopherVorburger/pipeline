@@ -6,10 +6,12 @@ type ContactStageProps = {
   stage: Stage
   isClient: boolean
   nextStage: Stage | null
+  previousStage: Stage | null
   action: () => Promise<void>
+  revertAction: () => Promise<void>
 }
 
-export function ContactStage({ stage, isClient, nextStage, action }: ContactStageProps) {
+export function ContactStage({ stage, isClient, nextStage, previousStage, action, revertAction }: ContactStageProps) {
   return (
     <div className="flex flex-wrap items-center gap-4">
       <StageBadge stage={stage} isClient={isClient} />
@@ -17,6 +19,13 @@ export function ContactStage({ stage, isClient, nextStage, action }: ContactStag
         <form action={action}>
           <Button type="submit" variant="outline" size="sm">
             Étape suivante · {STAGE_LABELS[nextStage]}
+          </Button>
+        </form>
+      )}
+      {previousStage && (
+        <form action={revertAction}>
+          <Button type="submit" variant="ghost" size="sm">
+            Étape précédente · {STAGE_LABELS[previousStage]}
           </Button>
         </form>
       )}

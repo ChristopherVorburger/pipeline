@@ -14,6 +14,7 @@ export type { Channel, Interlocutor, Stage }
 export type Contact = StoredContact & {
   isClient: boolean
   nextStage: Stage | null
+  previousStage: Stage | null
 }
 
 export type ContactInput = {
@@ -56,6 +57,10 @@ export type AdvanceContactStageResult =
   | { ok: true; contact: Contact }
   | { ok: false; reason: "notFound" | "lastStage" | "conflict" }
 
+export type RevertContactStageResult =
+  | { ok: true; contact: Contact }
+  | { ok: false; reason: "notFound" | "firstStage" | "conflict" }
+
 const STAGES: readonly Stage[] = ["premier_contact", "degustation", "commande"]
 
 const FIRST_STAGE: Stage = "premier_contact"
@@ -66,11 +71,16 @@ function nextStageOf(stage: Stage): Stage | null {
   return STAGES[STAGES.indexOf(stage) + 1] ?? null
 }
 
+function previousStageOf(stage: Stage): Stage | null {
+  return STAGES[STAGES.indexOf(stage) - 1] ?? null
+}
+
 function present(contact: StoredContact): Contact {
   return {
     ...contact,
     isClient: contact.stage === CLIENT_STAGE,
     nextStage: nextStageOf(contact.stage),
+    previousStage: previousStageOf(contact.stage),
   }
 }
 
@@ -206,8 +216,25 @@ export async function advanceContactStage(
   const next = nextStageOf(contact.stage)
   if (!next) return { ok: false, reason: "lastStage" }
 
-  const advanced = await repository.advanceStage(id.data, contact.stage, next)
+  const advanced = await repository.changeStage(id.data, contact.stage, next)
   return advanced ? { ok: true, contact: present(advanced) } : { ok: false, reason: "conflict" }
+}
+
+export async function revertContactStage(
+  rawId: string,
+  repository: ContactRepository = getContactRepository(),
+): Promise<RevertContactStageResult> {
+  const id = contactId.safeParse(rawId)
+  if (!id.success) return { ok: false, reason: "notFound" }
+
+  const contact = await repository.findById(id.data)
+  if (!contact) return { ok: false, reason: "notFound" }
+
+  const previous = previousStageOf(contact.stage)
+  if (!previous) return { ok: false, reason: "firstStage" }
+
+  const reverted = await repository.changeStage(id.data, contact.stage, previous)
+  return reverted ? { ok: true, contact: present(reverted) } : { ok: false, reason: "conflict" }
 }
 
 export function checkStorage(): void {

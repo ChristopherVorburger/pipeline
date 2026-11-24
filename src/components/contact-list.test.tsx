@@ -19,6 +19,7 @@ function contact(overrides: Partial<Contact>): Contact {
     channel: null,
     isClient: false,
     nextStage: "degustation",
+    previousStage: null,
     createdAt: "",
     ...overrides,
   }

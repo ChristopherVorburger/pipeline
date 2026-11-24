@@ -34,7 +34,7 @@ export interface ContactRepository {
   findWithoutVisitSince(cutoffDate: string): Promise<StoredContact[]>
   findById(id: string): Promise<StoredContact | null>
   update(id: string, details: ContactDetails): Promise<StoredContact | null>
-  advanceStage(id: string, from: Stage, to: Stage): Promise<StoredContact | null>
+  changeStage(id: string, from: Stage, to: Stage): Promise<StoredContact | null>
 }
 
 const CREATE_TABLE = `
@@ -168,7 +168,7 @@ export function createSqliteContactRepository(
       return result.rowsAffected > 0 ? findById(id) : null
     },
 
-    async advanceStage(id, from, to) {
+    async changeStage(id, from, to) {
       await ensureSchema()
       const result = await client.execute({
         sql: "UPDATE contacts SET stage = ? WHERE id = ? AND stage = ?",

@@ -18,6 +18,7 @@ const contact: Contact = {
   channel: "telephone",
   isClient: false,
   nextStage: "degustation",
+  previousStage: null,
   createdAt: "2026-11-23T10:00:00.000Z",
 }
 
@@ -144,5 +145,37 @@ describe("ContactDetailsForm", () => {
     const formData = action.mock.calls[0][1]
     expect(formData.get("interlocutor") ?? "").toBe("")
     expect(formData.get("channel") ?? "").toBe("")
+  })
+
+  it("propose l'interlocuteur et le canal à un client", async () => {
+    const action = vi.fn<Action>(async () => ({}))
+    render(
+      <ContactDetailsForm
+        contact={{ ...contact, stage: "commande", isClient: true, nextStage: null, previousStage: "degustation" }}
+        action={action}
+      />,
+    )
+
+    await choose("Interlocuteur", "Patron")
+    await choose("Canal", "En personne")
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer" }))
+
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
+    const formData = action.mock.calls[0][1]
+    expect(formData.get("interlocutor")).toBe("patron")
+    expect(formData.get("channel")).toBe("en_personne")
+  })
+
+  it("permet de vider un interlocuteur renseigné", async () => {
+    const action = vi.fn<Action>(async () => ({}))
+    render(<ContactDetailsForm contact={contact} action={action} />)
+
+    await choose("Interlocuteur", "Non renseigné")
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer" }))
+
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
+    const formData = action.mock.calls[0][1]
+    expect(formData.get("interlocutor") ?? "").toBe("")
+    expect(formData.get("channel")).toBe("telephone")
   })
 })

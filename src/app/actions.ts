@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation"
 import * as z from "zod"
 import type { ContactDetailsFormState } from "@/components/contact-details-form"
 import type { ContactFormState } from "@/components/contact-form"
-import { addContact, advanceContactStage, updateContactDetails } from "@/services/contact-service"
+import { addContact, advanceContactStage, revertContactStage, updateContactDetails } from "@/services/contact-service"
 
 const FORM_ERROR = "Le formulaire contient des valeurs invalides."
 
@@ -66,6 +66,15 @@ export async function updateContact(
 
 export async function advanceContact(id: string): Promise<void> {
   const result = await advanceContactStage(id)
+  if (!result.ok && result.reason === "notFound") notFound()
+
+  revalidatePath("/")
+  revalidatePath("/a-relancer")
+  revalidatePath(`/contacts/${id}`)
+}
+
+export async function revertContact(id: string): Promise<void> {
+  const result = await revertContactStage(id)
   if (!result.ok && result.reason === "notFound") notFound()
 
   revalidatePath("/")

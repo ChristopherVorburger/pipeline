@@ -13,6 +13,7 @@ import {
   getContact,
   listContacts,
   listContactsToFollowUp,
+  revertContactStage,
   updateContactDetails,
   type Contact,
 } from "@/services/contact-service"
@@ -47,7 +48,7 @@ function createFakeRepository(initial: StoredContact[] = []) {
       contacts[index] = { ...contacts[index], ...details }
       return contacts[index]
     }),
-    advanceStage: vi.fn(async (id: string, from: Stage, to: Stage) => {
+    changeStage: vi.fn(async (id: string, from: Stage, to: Stage) => {
       const index = contacts.findIndex((c) => c.id === id && c.stage === from)
       if (index === -1) return null
       contacts[index] = { ...contacts[index], stage: to }
@@ -80,8 +81,19 @@ const NEXT_STAGES: Record<Stage, Stage | null> = {
   commande: null,
 }
 
+const PREVIOUS_STAGES: Record<Stage, Stage | null> = {
+  premier_contact: null,
+  degustation: "premier_contact",
+  commande: "degustation",
+}
+
 function shown(contact: StoredContact): Contact {
-  return { ...contact, isClient: contact.stage === "commande", nextStage: NEXT_STAGES[contact.stage] }
+  return {
+    ...contact,
+    isClient: contact.stage === "commande",
+    nextStage: NEXT_STAGES[contact.stage],
+    previousStage: PREVIOUS_STAGES[contact.stage],
+  }
 }
 
 const NOW = new Date("2026-11-24T10:00:00.000Z")
@@ -389,13 +401,64 @@ describe("updateContactDetails · interlocuteur et canal", () => {
   })
 })
 
+describe("updateContactDetails · interlocuteur et canal à toutes les étapes", () => {
+  it("enregistre patron et en personne pour un contact en dégustation", async () => {
+    const repository = createFakeRepository([durand({ stage: "degustation" })])
+
+    const result = await updateContactDetails(
+      DURAND_ID,
+      { interlocutor: "patron", channel: "en_personne" },
+      NOW,
+      repository,
+    )
+
+    expect(result).toMatchObject({
+      ok: true,
+      contact: { stage: "degustation", interlocutor: "patron", channel: "en_personne" },
+    })
+  })
+
+  it("change l'interlocuteur et le canal d'un client", async () => {
+    const repository = createFakeRepository([
+      durand({ stage: "commande", interlocutor: "sommelier", channel: "telephone" }),
+    ])
+
+    const result = await updateContactDetails(
+      DURAND_ID,
+      { interlocutor: "patron", channel: "en_personne" },
+      NOW,
+      repository,
+    )
+
+    expect(result).toMatchObject({
+      ok: true,
+      contact: { isClient: true, interlocutor: "patron", channel: "en_personne" },
+    })
+  })
+
+  it("efface un interlocuteur vidé", async () => {
+    const repository = createFakeRepository([
+      durand({ stage: "degustation", interlocutor: "sommelier", channel: "telephone" }),
+    ])
+
+    const result = await updateContactDetails(
+      DURAND_ID,
+      { interlocutor: "", channel: "telephone" },
+      NOW,
+      repository,
+    )
+
+    expect(result).toMatchObject({ ok: true, contact: { interlocutor: null, channel: "telephone" } })
+  })
+})
+
 describe("advanceContactStage", () => {
   it("passe un contact de premier contact à dégustation", async () => {
     const repository = createFakeRepository([durand()])
 
     const result = await advanceContactStage(DURAND_ID, repository)
 
-    expect(repository.advanceStage).toHaveBeenCalledWith(DURAND_ID, "premier_contact", "degustation")
+    expect(repository.changeStage).toHaveBeenCalledWith(DURAND_ID, "premier_contact", "degustation")
     expect(result).toEqual({ ok: true, contact: shown(durand({ stage: "degustation" })) })
     expect(result).toMatchObject({ contact: { isClient: false, nextStage: "commande" } })
     expect(await listContacts(repository)).toMatchObject([{ stage: "degustation" }])
@@ -406,7 +469,7 @@ describe("advanceContactStage", () => {
 
     const result = await advanceContactStage(DURAND_ID, repository)
 
-    expect(repository.advanceStage).toHaveBeenCalledWith(DURAND_ID, "degustation", "commande")
+    expect(repository.changeStage).toHaveBeenCalledWith(DURAND_ID, "degustation", "commande")
     expect(result).toMatchObject({ ok: true, contact: { stage: "commande", isClient: true, nextStage: null } })
   })
 
@@ -415,7 +478,7 @@ describe("advanceContactStage", () => {
 
     expect(await getContact(DURAND_ID, repository)).toMatchObject({ contact: { isClient: true, nextStage: null } })
     expect(await advanceContactStage(DURAND_ID, repository)).toEqual({ ok: false, reason: "lastStage" })
-    expect(repository.advanceStage).not.toHaveBeenCalled()
+    expect(repository.changeStage).not.toHaveBeenCalled()
   })
 
   it("renvoie notFound pour un id qui n'est pas un UUID, sans interroger le repository", async () => {
@@ -423,7 +486,7 @@ describe("advanceContactStage", () => {
 
     expect(await advanceContactStage("abc", repository)).toEqual({ ok: false, reason: "notFound" })
     expect(repository.findById).not.toHaveBeenCalled()
-    expect(repository.advanceStage).not.toHaveBeenCalled()
+    expect(repository.changeStage).not.toHaveBeenCalled()
   })
 
   it("renvoie notFound pour un UUID inconnu", async () => {
@@ -437,10 +500,86 @@ describe("advanceContactStage", () => {
 
   it("ne saute pas d'étape si le contact a déjà avancé entre-temps", async () => {
     const repository = createFakeRepository([durand()])
-    vi.mocked(repository.advanceStage).mockResolvedValueOnce(null)
+    vi.mocked(repository.changeStage).mockResolvedValueOnce(null)
 
     expect(await advanceContactStage(DURAND_ID, repository)).toEqual({ ok: false, reason: "conflict" })
-    expect(repository.advanceStage).toHaveBeenCalledTimes(1)
+    expect(repository.changeStage).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("revertContactStage", () => {
+  it("ramène un contact de dégustation à premier contact", async () => {
+    const repository = createFakeRepository([durand({ stage: "degustation" })])
+
+    const result = await revertContactStage(DURAND_ID, repository)
+
+    expect(repository.changeStage).toHaveBeenCalledWith(DURAND_ID, "degustation", "premier_contact")
+    expect(result).toEqual({ ok: true, contact: shown(durand({ stage: "premier_contact" })) })
+    expect(await listContacts(repository)).toMatchObject([{ stage: "premier_contact" }])
+  })
+
+  it("ramène un client en dégustation, et il n'est plus client", async () => {
+    const repository = createFakeRepository([durand({ stage: "commande" })])
+
+    const result = await revertContactStage(DURAND_ID, repository)
+
+    expect(repository.changeStage).toHaveBeenCalledWith(DURAND_ID, "commande", "degustation")
+    expect(result).toMatchObject({
+      ok: true,
+      contact: { stage: "degustation", isClient: false, nextStage: "commande", previousStage: "premier_contact" },
+    })
+  })
+
+  it("ne propose pas d'étape précédente en premier contact et refuse de reculer", async () => {
+    const repository = createFakeRepository([durand()])
+
+    expect(await getContact(DURAND_ID, repository)).toMatchObject({ contact: { previousStage: null } })
+    expect(await revertContactStage(DURAND_ID, repository)).toEqual({ ok: false, reason: "firstStage" })
+    expect(repository.changeStage).not.toHaveBeenCalled()
+  })
+
+  it("garde interlocuteur, canal, vin, commentaire et date de visite", async () => {
+    const details = {
+      wineTasted: "Chablis",
+      comment: "Rappeler",
+      lastVisitDate: "2026-11-12",
+      interlocutor: "patron",
+      channel: "en_personne",
+    } as const
+    const repository = createFakeRepository([durand({ stage: "commande", ...details })])
+
+    const result = await revertContactStage(DURAND_ID, repository)
+
+    expect(result).toEqual({ ok: true, contact: shown(durand({ stage: "degustation", ...details })) })
+  })
+
+  it("renvoie notFound pour un id qui n'est pas un UUID, sans interroger le repository", async () => {
+    const repository = createFakeRepository([durand({ stage: "degustation" })])
+
+    expect(await revertContactStage("abc", repository)).toEqual({ ok: false, reason: "notFound" })
+    expect(repository.findById).not.toHaveBeenCalled()
+    expect(repository.changeStage).not.toHaveBeenCalled()
+  })
+
+  it("renvoie notFound pour un UUID inconnu", async () => {
+    const repository = createFakeRepository([durand({ stage: "degustation" })])
+
+    expect(await revertContactStage("0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", repository)).toEqual({
+      ok: false,
+      reason: "notFound",
+    })
+  })
+
+  it("ne recule que d'une étape quand deux onglets reculent en même temps", async () => {
+    const repository = createFakeRepository([durand({ stage: "commande" })])
+
+    const [first, second] = await Promise.all([
+      revertContactStage(DURAND_ID, repository),
+      revertContactStage(DURAND_ID, repository),
+    ])
+
+    expect([first, second]).toContainEqual({ ok: false, reason: "conflict" })
+    expect(await getContact(DURAND_ID, repository)).toMatchObject({ contact: { stage: "degustation" } })
   })
 })
 

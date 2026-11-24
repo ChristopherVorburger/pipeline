@@ -19,14 +19,18 @@ type ContactDetailsFormProps = {
   action: (state: ContactDetailsFormState, formData: FormData) => Promise<ContactDetailsFormState>
 }
 
-type Choice = { value: string; label: string }
+type Choice = { value: string | null; label: string }
+
+const NOT_SET: Choice = { value: null, label: "Non renseigné" }
 
 const INTERLOCUTORS: Choice[] = [
+  NOT_SET,
   { value: "patron", label: "Patron" },
   { value: "sommelier", label: "Sommelier" },
 ]
 
 const CHANNELS: Choice[] = [
+  NOT_SET,
   { value: "en_personne", label: "En personne" },
   { value: "telephone", label: "Par téléphone" },
 ]
@@ -57,7 +61,7 @@ function ChoiceField({ name, label, choices, defaultValue, error }: ChoiceFieldP
         </SelectTrigger>
         <SelectContent>
           {choices.map((choice) => (
-            <SelectItem key={choice.value} value={choice.value}>
+            <SelectItem key={choice.value ?? ""} value={choice.value}>
               {choice.label}
             </SelectItem>
           ))}
