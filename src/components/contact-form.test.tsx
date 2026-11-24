@@ -42,4 +42,16 @@ describe("ContactForm", () => {
     expect(screen.getByLabelText("Nom").getAttribute("aria-invalid")).toBeNull()
     expect((screen.getByLabelText("Nom") as HTMLInputElement).value).toBe("Durand")
   })
+
+  it("affiche l'erreur de formulaire renvoyée par l'action", async () => {
+    const action = vi.fn(async (): Promise<ContactFormState> => ({
+      formError: "Le formulaire contient des valeurs invalides.",
+    }))
+    render(<ContactForm action={action} />)
+
+    fireEvent.click(screen.getByRole("button", { name: "Ajouter" }))
+
+    const alert = await screen.findByRole("alert")
+    expect(alert.textContent).toBe("Le formulaire contient des valeurs invalides.")
+  })
 })

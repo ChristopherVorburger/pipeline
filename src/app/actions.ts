@@ -2,19 +2,34 @@
 
 import { revalidatePath } from "next/cache"
 import { notFound, redirect } from "next/navigation"
+import * as z from "zod"
 import type { ContactDetailsFormState } from "@/components/contact-details-form"
 import type { ContactFormState } from "@/components/contact-form"
 import { addContact, updateContactDetails } from "@/services/contact-service"
+
+const FORM_ERROR = "Le formulaire contient des valeurs invalides."
+
+const formText = z.string().default("")
+
+const contactForm = z.object({
+  lastName: formText,
+  firstName: formText,
+  restaurant: formText,
+})
+
+const contactDetailsForm = z.object({
+  wineTasted: formText,
+  comment: formText,
+  lastVisitDate: formText,
+})
 
 export async function createContact(
   _state: ContactFormState,
   formData: FormData,
 ): Promise<ContactFormState> {
-  const values = {
-    lastName: String(formData.get("lastName") ?? ""),
-    firstName: String(formData.get("firstName") ?? ""),
-    restaurant: String(formData.get("restaurant") ?? ""),
-  }
+  const parsed = contactForm.safeParse(Object.fromEntries(formData))
+  if (!parsed.success) return { formError: FORM_ERROR }
+  const values = parsed.data
 
   const result = await addContact(values)
   if (!result.ok) {
@@ -30,11 +45,9 @@ export async function updateContact(
   _state: ContactDetailsFormState,
   formData: FormData,
 ): Promise<ContactDetailsFormState> {
-  const values = {
-    wineTasted: String(formData.get("wineTasted") ?? ""),
-    comment: String(formData.get("comment") ?? ""),
-    lastVisitDate: String(formData.get("lastVisitDate") ?? ""),
-  }
+  const parsed = contactDetailsForm.safeParse(Object.fromEntries(formData))
+  if (!parsed.success) return { formError: FORM_ERROR }
+  const values = parsed.data
 
   const result = await updateContactDetails(id, values, new Date())
   if (!result.ok) {

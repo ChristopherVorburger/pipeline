@@ -78,4 +78,16 @@ describe("ContactDetailsForm", () => {
     expect((screen.getByLabelText("Vin dégusté") as HTMLInputElement).value).toBe("Morgon")
     expect(screen.getByLabelText("Vin dégusté").getAttribute("aria-invalid")).toBeNull()
   })
+
+  it("affiche l'erreur de formulaire renvoyée par l'action", async () => {
+    const action = vi.fn(async (): Promise<ContactDetailsFormState> => ({
+      formError: "Le formulaire contient des valeurs invalides.",
+    }))
+    render(<ContactDetailsForm contact={contact} action={action} />)
+
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer" }))
+
+    const alert = await screen.findByRole("alert")
+    expect(alert.textContent).toBe("Le formulaire contient des valeurs invalides.")
+  })
 })

@@ -10,6 +10,7 @@ import type { Contact, ContactDetailsErrors, ContactDetailsInput } from "@/servi
 export type ContactDetailsFormState = {
   errors?: ContactDetailsErrors
   values?: ContactDetailsInput
+  formError?: string
 }
 
 type ContactDetailsFormProps = {
@@ -54,6 +55,11 @@ export function ContactDetailsForm({ contact, action }: ContactDetailsFormProps)
         <Label htmlFor="contact-comment">Commentaire</Label>
         <Textarea id="contact-comment" name="comment" defaultValue={values.comment} />
       </div>
+      {state.formError && (
+        <p role="alert" className="text-sm text-destructive">
+          {state.formError}
+        </p>
+      )}
       <Button type="submit" disabled={pending} className="self-start">
         Enregistrer
       </Button>

@@ -1,3 +1,4 @@
+import * as z from "zod"
 import {
   getContactRepository,
   type Contact,
@@ -22,31 +23,6 @@ export type AddContactResult =
   | { ok: true; contact: Contact }
   | { ok: false; errors: ContactErrors }
 
-export function listContacts(
-  repository: ContactRepository = getContactRepository(),
-): Promise<Contact[]> {
-  return repository.findAll()
-}
-
-export async function addContact(
-  input: ContactInput,
-  repository: ContactRepository = getContactRepository(),
-): Promise<AddContactResult> {
-  const lastName = input.lastName?.trim() ?? ""
-  const firstName = input.firstName?.trim() || null
-  const restaurant = input.restaurant?.trim() ?? ""
-
-  const errors: ContactErrors = {}
-  if (!lastName) errors.lastName = "Le nom est obligatoire."
-  if (!restaurant) errors.restaurant = "Le restaurant est obligatoire."
-  if (errors.lastName || errors.restaurant) {
-    return { ok: false, errors }
-  }
-
-  const contact = await repository.add({ lastName, firstName, restaurant })
-  return { ok: true, contact }
-}
-
 export type ContactDetailsInput = {
   wineTasted?: string
   comment?: string
@@ -64,20 +40,39 @@ export type UpdateContactDetailsResult =
   | { ok: false; reason: "notFound" }
   | { ok: false; reason: "invalid"; errors: ContactDetailsErrors }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/
-const TIME_ZONE = "Europe/Paris"
-
-function isValidId(rawId: string): boolean {
-  return UUID.test(rawId)
+export function listContacts(
+  repository: ContactRepository = getContactRepository(),
+): Promise<Contact[]> {
+  return repository.findAll()
 }
 
-function isValidDate(value: string): boolean {
-  const match = ISO_DATE.exec(value)
-  if (!match) return false
-  const [, year, month, day] = match.map(Number)
-  const date = new Date(Date.UTC(year, month - 1, day))
-  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+const TIME_ZONE = "Europe/Paris"
+
+const requiredText = (message: string) => z.string({ error: message }).trim().min(1, message)
+
+const optionalText = z
+  .string()
+  .optional()
+  .transform((value) => value?.trim() || null)
+
+const contactId = z.uuid()
+
+const newContactSchema = z.object({
+  lastName: requiredText("Le nom est obligatoire."),
+  firstName: optionalText,
+  restaurant: requiredText("Le restaurant est obligatoire."),
+})
+
+function contactDetailsSchema(now: Date) {
+  return z.object({
+    wineTasted: optionalText,
+    comment: optionalText,
+    lastVisitDate: optionalText
+      .pipe(z.iso.date({ error: "La date de visite est invalide." }).nullable())
+      .refine((date) => date === null || date <= todayIn(TIME_ZONE, now), {
+        error: "La date de visite ne peut pas être dans le futur.",
+      }),
+  })
 }
 
 function todayIn(timeZone: string, now: Date): string {
@@ -91,16 +86,33 @@ function todayIn(timeZone: string, now: Date): string {
   return `${part("year")}-${part("month")}-${part("day")}`
 }
 
-function emptyToNull(value: string | undefined): string | null {
-  return value?.trim() || null
+function firstErrors<T>(error: z.ZodError<T>): Partial<Record<keyof T, string>> {
+  const { fieldErrors } = z.flattenError(error)
+  return Object.fromEntries(
+    Object.entries<string[] | undefined>(fieldErrors).map(([field, messages]) => [field, messages?.[0]]),
+  ) as Partial<Record<keyof T, string>>
+}
+
+export async function addContact(
+  input: ContactInput,
+  repository: ContactRepository = getContactRepository(),
+): Promise<AddContactResult> {
+  const parsed = newContactSchema.safeParse(input)
+  if (!parsed.success) {
+    return { ok: false, errors: firstErrors(parsed.error) }
+  }
+
+  const contact = await repository.add(parsed.data)
+  return { ok: true, contact }
 }
 
 export async function getContact(
   rawId: string,
   repository: ContactRepository = getContactRepository(),
 ): Promise<GetContactResult> {
-  if (!isValidId(rawId)) return { ok: false, reason: "notFound" }
-  const contact = await repository.findById(rawId)
+  const id = contactId.safeParse(rawId)
+  if (!id.success) return { ok: false, reason: "notFound" }
+  const contact = await repository.findById(id.data)
   return contact ? { ok: true, contact } : { ok: false, reason: "notFound" }
 }
 
@@ -110,28 +122,16 @@ export async function updateContactDetails(
   now: Date,
   repository: ContactRepository = getContactRepository(),
 ): Promise<UpdateContactDetailsResult> {
-  if (!isValidId(rawId)) return { ok: false, reason: "notFound" }
+  const id = contactId.safeParse(rawId)
+  if (!id.success) return { ok: false, reason: "notFound" }
 
-  const details: ContactDetails = {
-    wineTasted: emptyToNull(input.wineTasted),
-    comment: emptyToNull(input.comment),
-    lastVisitDate: emptyToNull(input.lastVisitDate),
+  const parsed = contactDetailsSchema(now).safeParse(input)
+  if (!parsed.success) {
+    return { ok: false, reason: "invalid", errors: firstErrors(parsed.error) }
   }
 
-  if (details.lastVisitDate !== null) {
-    if (!isValidDate(details.lastVisitDate)) {
-      return { ok: false, reason: "invalid", errors: { lastVisitDate: "La date de visite est invalide." } }
-    }
-    if (details.lastVisitDate > todayIn(TIME_ZONE, now)) {
-      return {
-        ok: false,
-        reason: "invalid",
-        errors: { lastVisitDate: "La date de visite ne peut pas être dans le futur." },
-      }
-    }
-  }
-
-  const contact = await repository.update(rawId, details)
+  const details: ContactDetails = parsed.data
+  const contact = await repository.update(id.data, details)
   return contact ? { ok: true, contact } : { ok: false, reason: "notFound" }
 }
 
