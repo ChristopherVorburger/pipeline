@@ -93,4 +93,11 @@ describe("ContactList", () => {
     expect(items[2].textContent).toContain("Client")
     expect(items[0].textContent).not.toContain("Client")
   })
+
+  it("affiche le message vide fourni", () => {
+    render(<ContactList contacts={[]} emptyMessage="Personne à relancer." />)
+
+    expect(screen.getByText("Personne à relancer.")).toBeDefined()
+    expect(screen.queryByText("Aucun contact.")).toBeNull()
+  })
 })

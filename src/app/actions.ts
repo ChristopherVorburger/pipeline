@@ -39,6 +39,7 @@ export async function createContact(
   }
 
   revalidatePath("/")
+  revalidatePath("/a-relancer")
   return {}
 }
 
@@ -58,6 +59,7 @@ export async function updateContact(
   }
 
   revalidatePath("/")
+  revalidatePath("/a-relancer")
   revalidatePath(`/contacts/${id}`)
   redirect("/")
 }
@@ -67,5 +69,6 @@ export async function advanceContact(id: string): Promise<void> {
   if (!result.ok && result.reason === "notFound") notFound()
 
   revalidatePath("/")
+  revalidatePath("/a-relancer")
   revalidatePath(`/contacts/${id}`)
 }

@@ -82,6 +82,8 @@ export async function listContacts(
 
 const TIME_ZONE = "Europe/Paris"
 
+const FOLLOW_UP_AFTER_DAYS = 7
+
 const requiredText = (message: string) => z.string({ error: message }).trim().min(1, message)
 
 const optionalText = z
@@ -126,6 +128,20 @@ function todayIn(timeZone: string, now: Date): string {
   }).formatToParts(now)
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value
   return `${part("year")}-${part("month")}-${part("day")}`
+}
+
+function daysBefore(isoDate: string, days: number): string {
+  const date = new Date(`${isoDate}T00:00:00.000Z`)
+  date.setUTCDate(date.getUTCDate() - days)
+  return date.toISOString().slice(0, 10)
+}
+
+export async function listContactsToFollowUp(
+  now: Date,
+  repository: ContactRepository = getContactRepository(),
+): Promise<Contact[]> {
+  const cutoff = daysBefore(todayIn(TIME_ZONE, now), FOLLOW_UP_AFTER_DAYS)
+  return (await repository.findWithoutVisitSince(cutoff)).map(present)
 }
 
 function firstErrors<T>(error: z.ZodError<T>): Partial<Record<keyof T, string>> {

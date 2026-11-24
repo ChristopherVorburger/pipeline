@@ -12,6 +12,7 @@ import {
   checkStorage,
   getContact,
   listContacts,
+  listContactsToFollowUp,
   updateContactDetails,
   type Contact,
 } from "@/services/contact-service"
@@ -36,6 +37,9 @@ function createFakeRepository(initial: StoredContact[] = []) {
       return created
     }),
     findAll: async () => [...contacts],
+    findWithoutVisitSince: vi.fn(async (cutoff: string) =>
+      contacts.filter((c) => c.lastVisitDate === null || c.lastVisitDate < cutoff),
+    ),
     findById: vi.fn(async (id: string) => contacts.find((c) => c.id === id) ?? null),
     update: vi.fn(async (id: string, details: ContactDetails) => {
       const index = contacts.findIndex((c) => c.id === id)
@@ -437,6 +441,68 @@ describe("advanceContactStage", () => {
 
     expect(await advanceContactStage(DURAND_ID, repository)).toEqual({ ok: false, reason: "conflict" })
     expect(repository.advanceStage).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("listContactsToFollowUp", () => {
+  it("demande au repository les contacts sans visite depuis plus de 7 jours", async () => {
+    const repository = createFakeRepository()
+
+    await listContactsToFollowUp(NOW, repository)
+
+    expect(repository.findWithoutVisitSince).toHaveBeenCalledWith("2026-11-17")
+  })
+
+  it("inclut une dernière visite il y a 8 jours", async () => {
+    const repository = createFakeRepository([durand({ lastVisitDate: "2026-11-16" })])
+
+    expect(await listContactsToFollowUp(NOW, repository)).toEqual([shown(durand({ lastVisitDate: "2026-11-16" }))])
+  })
+
+  it("exclut une dernière visite il y a exactement 7 jours", async () => {
+    const repository = createFakeRepository([durand({ lastVisitDate: "2026-11-17" })])
+
+    expect(await listContactsToFollowUp(NOW, repository)).toEqual([])
+  })
+
+  it("inclut un client sans visite depuis 10 jours", async () => {
+    const client = durand({ stage: "commande", lastVisitDate: "2026-11-14" })
+
+    expect(await listContactsToFollowUp(NOW, createFakeRepository([client]))).toMatchObject([
+      { stage: "commande", isClient: true },
+    ])
+  })
+
+  it("inclut un contact sans aucune date de visite", async () => {
+    const repository = createFakeRepository([durand({ lastVisitDate: null })])
+
+    expect(await listContactsToFollowUp(NOW, repository)).toHaveLength(1)
+  })
+
+  it("retire un contact dont la date de visite passe à aujourd'hui", async () => {
+    const repository = createFakeRepository([durand({ lastVisitDate: "2026-11-01" })])
+    expect(await listContactsToFollowUp(NOW, repository)).toHaveLength(1)
+
+    await updateContactDetails(DURAND_ID, { lastVisitDate: "2026-11-24" }, NOW, repository)
+
+    expect(await listContactsToFollowUp(NOW, repository)).toEqual([])
+  })
+
+  it("compte les jours à partir de la date du jour à Paris", async () => {
+    const repository = createFakeRepository()
+    const justAfterMidnightInParis = new Date("2026-11-24T23:30:00.000Z")
+
+    await listContactsToFollowUp(justAfterMidnightInParis, repository)
+
+    expect(repository.findWithoutVisitSince).toHaveBeenCalledWith("2026-11-18")
+  })
+
+  it("passe correctement d'un mois et d'une année à l'autre", async () => {
+    const repository = createFakeRepository()
+
+    await listContactsToFollowUp(new Date("2027-01-03T10:00:00.000Z"), repository)
+
+    expect(repository.findWithoutVisitSince).toHaveBeenCalledWith("2026-12-27")
   })
 })
 

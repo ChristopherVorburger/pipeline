@@ -31,6 +31,7 @@ export type ContactDetails = Pick<
 export interface ContactRepository {
   add(contact: NewContact): Promise<StoredContact>
   findAll(): Promise<StoredContact[]>
+  findWithoutVisitSince(cutoffDate: string): Promise<StoredContact[]>
   findById(id: string): Promise<StoredContact | null>
   update(id: string, details: ContactDetails): Promise<StoredContact | null>
   advanceStage(id: string, from: Stage, to: Stage): Promise<StoredContact | null>
@@ -130,6 +131,17 @@ export function createSqliteContactRepository(
     async findAll() {
       await ensureSchema()
       const result = await client.execute(`SELECT ${COLUMNS} FROM contacts ORDER BY created_at, rowid`)
+      return result.rows.map(toContact)
+    },
+
+    async findWithoutVisitSince(cutoffDate) {
+      await ensureSchema()
+      const result = await client.execute({
+        sql: `SELECT ${COLUMNS} FROM contacts
+          WHERE last_visit_date IS NULL OR last_visit_date < ?
+          ORDER BY last_visit_date IS NOT NULL, last_visit_date, created_at, rowid`,
+        args: [cutoffDate],
+      })
       return result.rows.map(toContact)
     },
 

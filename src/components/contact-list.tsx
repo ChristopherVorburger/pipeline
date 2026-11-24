@@ -5,6 +5,7 @@ import type { Contact } from "@/services/contact-service"
 
 type ContactListProps = {
   contacts: Contact[]
+  emptyMessage?: string
 }
 
 function formatDate(isoDate: string): string {
@@ -12,9 +13,9 @@ function formatDate(isoDate: string): string {
   return `${day}/${month}/${year}`
 }
 
-export function ContactList({ contacts }: ContactListProps) {
+export function ContactList({ contacts, emptyMessage = "Aucun contact." }: ContactListProps) {
   if (contacts.length === 0) {
-    return <p className="text-muted-foreground">Aucun contact.</p>
+    return <p className="text-muted-foreground">{emptyMessage}</p>
   }
 
   return (

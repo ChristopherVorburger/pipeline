@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { createContact } from "@/app/actions";
 import { ContactForm } from "@/components/contact-form";
 import { ContactList } from "@/components/contact-list";
+import { MainNav } from "@/components/main-nav";
 import { ModeToggle } from "@/components/mode-toggle";
 import { listContacts } from "@/services/contact-service";
 
@@ -20,6 +21,7 @@ export default function Home() {
         <h1 className="text-4xl">Pipeline</h1>
         <ModeToggle />
       </header>
+      <MainNav current="contacts" />
       <ContactForm action={createContact} />
       <Suspense fallback={<p className="text-muted-foreground">Chargement…</p>}>
         <Contacts />

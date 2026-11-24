@@ -297,4 +297,65 @@ describe("createSqliteContactRepository", () => {
     ])
     repository.close()
   })
+
+  describe("findWithoutVisitSince", () => {
+    async function seed(lastVisits: Record<string, string | null>) {
+      const repository = createSqliteContactRepository(url)
+      for (const [lastName, lastVisitDate] of Object.entries(lastVisits)) {
+        const added = await repository.add({ lastName, firstName: null, restaurant: "R", stage: "premier_contact" })
+        await repository.update(added.id, {
+          wineTasted: null,
+          comment: null,
+          lastVisitDate,
+          interlocutor: null,
+          channel: null,
+        })
+      }
+      return repository
+    }
+
+    it("renvoie les contacts dont la dernière visite est strictement avant la date limite", async () => {
+      const repository = await seed({ Avant: "2026-11-16", Limite: "2026-11-17", Apres: "2026-11-20" })
+
+      const contacts = await repository.findWithoutVisitSince("2026-11-17")
+
+      expect(contacts.map((c) => c.lastName)).toEqual(["Avant"])
+      repository.close()
+    })
+
+    it("renvoie les contacts sans aucune date de visite", async () => {
+      const repository = await seed({ Jamais: null, Recent: "2026-11-20" })
+
+      const contacts = await repository.findWithoutVisitSince("2026-11-17")
+
+      expect(contacts.map((c) => c.lastName)).toEqual(["Jamais"])
+      repository.close()
+    })
+
+    it("renvoie les contacts à toutes les étapes", async () => {
+      const repository = createSqliteContactRepository(url)
+      await repository.add({ lastName: "Client", firstName: null, restaurant: "R", stage: "commande" })
+
+      expect(await repository.findWithoutVisitSince("2026-11-17")).toMatchObject([
+        { lastName: "Client", stage: "commande" },
+      ])
+      repository.close()
+    })
+
+    it("met d'abord les contacts jamais visités, puis les visites les plus anciennes", async () => {
+      const repository = await seed({ Recente: "2026-11-10", Jamais: null, Ancienne: "2026-10-01" })
+
+      const contacts = await repository.findWithoutVisitSince("2026-11-17")
+
+      expect(contacts.map((c) => c.lastName)).toEqual(["Jamais", "Ancienne", "Recente"])
+      repository.close()
+    })
+
+    it("ne traite pas la date limite comme du SQL", async () => {
+      const repository = await seed({ Durand: "2026-11-20" })
+
+      expect(await repository.findWithoutVisitSince("' OR 1=1 --")).toEqual([])
+      repository.close()
+    })
+  })
 })

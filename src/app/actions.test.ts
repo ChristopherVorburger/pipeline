@@ -55,6 +55,7 @@ describe("createContact", () => {
 
     expect(addContact).toHaveBeenCalledWith({ lastName: "Durand", firstName: "", restaurant: "Le Comptoir" })
     expect(revalidatePath).toHaveBeenCalledWith("/")
+    expect(revalidatePath).toHaveBeenCalledWith("/a-relancer")
     expect(state).toEqual({})
   })
 
@@ -110,6 +111,7 @@ describe("updateContact", () => {
       expect.any(Date),
     )
     expect(revalidatePath).toHaveBeenCalledWith("/")
+    expect(revalidatePath).toHaveBeenCalledWith("/a-relancer")
     expect(redirect).toHaveBeenCalledWith("/")
   })
 
@@ -154,6 +156,7 @@ describe("advanceContact", () => {
 
     expect(advanceContactStage).toHaveBeenCalledWith(ID)
     expect(revalidatePath).toHaveBeenCalledWith("/")
+    expect(revalidatePath).toHaveBeenCalledWith("/a-relancer")
     expect(revalidatePath).toHaveBeenCalledWith(`/contacts/${ID}`)
   })
 
