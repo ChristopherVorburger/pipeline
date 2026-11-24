@@ -24,4 +24,16 @@ describe("resolveDatabaseUrl", () => {
       "DATABASE_URL manquante",
     )
   })
+
+  it("refuse une base fichier sur Vercel, où elle serait perdue au redéploiement", () => {
+    expect(() =>
+      resolveDatabaseUrl({ NODE_ENV: "production", VERCEL: "1", DATABASE_URL: "file:pipeline.db" }),
+    ).toThrow("DATABASE_URL pointe vers un fichier local")
+  })
+
+  it("accepte une base Turso sur Vercel", () => {
+    expect(
+      resolveDatabaseUrl({ NODE_ENV: "production", VERCEL: "1", DATABASE_URL: "libsql://pipeline-org.turso.io" }),
+    ).toBe("libsql://pipeline-org.turso.io")
+  })
 })

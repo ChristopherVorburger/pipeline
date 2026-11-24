@@ -358,4 +358,31 @@ describe("createSqliteContactRepository", () => {
       repository.close()
     })
   })
+
+  it("supporte plusieurs instances qui migrent la même base en même temps", async () => {
+    const legacy = createClient({ url })
+    await legacy.execute(
+      "CREATE TABLE contacts (id TEXT PRIMARY KEY, last_name TEXT NOT NULL, first_name TEXT, restaurant TEXT NOT NULL, created_at TEXT NOT NULL)",
+    )
+    legacy.close()
+    const instances = Array.from({ length: 5 }, () => createSqliteContactRepository(url))
+
+    const results = await Promise.allSettled(instances.map((instance) => instance.findAll()))
+
+    expect(results.map((result) => result.status)).toEqual(Array(5).fill("fulfilled"))
+    instances.forEach((instance) => instance.close())
+  })
+
+  it("retente la migration au prochain appel si elle a échoué", async () => {
+    const blocker = createClient({ url })
+    await blocker.execute("CREATE VIEW contacts AS SELECT 1 AS id")
+    const repository = createSqliteContactRepository(url)
+
+    await expect(repository.findAll()).rejects.toThrow()
+    await blocker.execute("DROP VIEW contacts")
+    blocker.close()
+
+    expect(await repository.findAll()).toEqual([])
+    repository.close()
+  })
 })

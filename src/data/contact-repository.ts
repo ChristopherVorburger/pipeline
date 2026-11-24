@@ -66,8 +66,16 @@ async function migrate(client: Client): Promise<void> {
   const missing = Object.entries(ADDED_COLUMNS)
     .filter(([column]) => !existing.has(column))
     .map(([, statement]) => statement)
-  if (missing.length > 0) {
-    await client.batch(missing, "write")
+  for (const statement of missing) {
+    await addColumn(client, statement)
+  }
+}
+
+async function addColumn(client: Client, statement: string): Promise<void> {
+  try {
+    await client.execute(statement)
+  } catch (error) {
+    if (!(error instanceof Error && /duplicate column name/i.test(error.message))) throw error
   }
 }
 
@@ -97,7 +105,11 @@ export function createSqliteContactRepository(
 ): ContactRepository & { close(): void } {
   const client = createClient({ url, authToken })
   let ready: Promise<void> | undefined
-  const ensureSchema = () => (ready ??= migrate(client))
+  const ensureSchema = () =>
+    (ready ??= migrate(client).catch((error: unknown) => {
+      ready = undefined
+      throw error
+    }))
 
   async function findById(id: string): Promise<StoredContact | null> {
     await ensureSchema()
