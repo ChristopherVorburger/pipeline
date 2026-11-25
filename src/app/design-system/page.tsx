@@ -188,7 +188,7 @@ export default function DesignSystemPage() {
           <Badge variant="outline">Premier contact</Badge>
           <Badge variant="secondary">Dégustation</Badge>
           <Badge>Commande</Badge>
-          <Badge className="bg-accent text-accent-foreground">Client</Badge>
+          <Badge variant="accent">Client</Badge>
           <Badge className="bg-warning text-warning-foreground">À relancer</Badge>
           <Badge variant="destructive">Erreur</Badge>
         </div>

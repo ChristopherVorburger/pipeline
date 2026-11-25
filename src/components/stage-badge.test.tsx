@@ -24,4 +24,12 @@ describe("StageBadge", () => {
     expect(screen.getByText("Commande")).toBeDefined()
     expect(screen.getByText("Client")).toBeDefined()
   })
+
+  it("affiche le badge client avec la variante accent du design system", () => {
+    render(<StageBadge stage="commande" isClient />)
+
+    const client = screen.getByText("Client")
+    expect(client.getAttribute("data-variant")).toBe("accent")
+    expect(client.className).not.toContain("bg-primary")
+  })
 })
