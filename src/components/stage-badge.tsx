@@ -22,7 +22,7 @@ export function StageBadge({ stage, isClient }: StageBadgeProps) {
   return (
     <span className="flex flex-wrap gap-2">
       <Badge variant={STAGE_VARIANTS[stage]}>{STAGE_LABELS[stage]}</Badge>
-      {isClient && <Badge className="bg-accent text-accent-foreground">Client</Badge>}
+      {isClient && <Badge variant="accent">Client</Badge>}
     </span>
   )
 }
